@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>樹木点検表</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --green: #1a7a4a; --green-light: #e8f5ee; --green-mid: #4caf78;
+  --amber: #b45309; --amber-light: #fef3c7;
+  --red: #b91c1c; --red-light: #fee2e2;
+  --gray: #374151; --gray-light: #f3f4f6; --border: #d1d5db;
+  --white: #ffffff; --text: #111827; --muted: #6b7280;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system,'Hiragino Sans','Noto Sans JP',sans-serif; background: #f0f0ec; color: var(--text); font-size: 15px; }
+
+/* ヘッダー */
+.header { background: var(--green); color: #fff; padding: 0; position: sticky; top: 0; z-index: 100; }
+.header-inner { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; max-width: 700px; margin: 0 auto; }
+.header h1 { font-size: 16px; font-weight: 600; }
+.tab-bar { display: flex; background: rgba(0,0,0,0.2); }
+.tab { flex: 1; text-align: center; padding: 8px 4px; font-size: 12px; color: rgba(255,255,255,0.7); cursor: pointer; border-bottom: 2px solid transparent; }
+.tab.active { color: #fff; border-bottom-color: #fff; background: rgba(255,255,255,0.1); }
+
+/* メインコンテンツ */
+.main { max-width: 700px; margin: 0 auto; padding: 12px 12px 80px; }
+
+/* カード */
+.card { background: var(--white); border: 0.5px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+.card-title { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: 0.05em; margin-bottom: 10px; }
+
+/* フォーム */
+.field { margin-bottom: 10px; }
+.field label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px; }
+.field input, .field select, .field textarea {
+  width: 100%; padding: 9px 11px; font-size: 14px; font-family: inherit;
+  border: 0.5px solid var(--border); border-radius: 8px;
+  background: var(--gray-light); color: var(--text); outline: none;
+}
+.field textarea { resize: vertical; min-height: 60px; line-height: 1.5; }
+.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--green-mid); background: #fff; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* チェックボックスグループ */
+.check-group { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; }
+.check-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; cursor: pointer; border: 0.5px solid transparent; }
+.check-item:hover { background: var(--gray-light); }
+.check-item.checked { background: var(--green-light); border-color: #a7d7bc; }
+.check-item input { width: 16px; height: 16px; accent-color: var(--green); flex-shrink: 0; }
+.check-item span { font-size: 13px; line-height: 1.3; }
+
+/* 点検結果ボタン */
+.result-btns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.result-btn { padding: 10px 6px; border-radius: 10px; border: 1.5px solid var(--border); background: var(--white); cursor: pointer; font-size: 12px; font-weight: 600; text-align: center; color: var(--muted); transition: all 0.15s; }
+.result-btn.sel-0 { border-color: var(--green-mid); background: var(--green-light); color: var(--green); }
+.result-btn.sel-1 { border-color: #f59e0b; background: var(--amber-light); color: var(--amber); }
+.result-btn.sel-2 { border-color: #ef4444; background: var(--red-light); color: var(--red); }
+
+/* セクションヘッダー */
+.sec-header { background: var(--green-light); border-left: 3px solid var(--green); padding: 6px 10px; margin-bottom: 10px; border-radius: 0 6px 6px 0; }
+.sec-header span { font-size: 13px; font-weight: 600; color: var(--green); }
+
+/* ボタン */
+.btn { padding: 11px 20px; border-radius: 10px; font-size: 14px; font-weight: 600; border: none; cursor: pointer; }
+.btn-primary { background: var(--green); color: #fff; width: 100%; }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-secondary { background: var(--white); color: var(--green); border: 1.5px solid var(--green); }
+.btn-danger { background: var(--red-light); color: var(--red); border: 1.5px solid #fca5a5; }
+.btn-sm { padding: 6px 14px; font-size: 12px; border-radius: 8px; }
+
+/* 一覧 */
+.tree-list { display: flex; flex-direction: column; gap: 8px; }
+.tree-item { background: var(--white); border: 0.5px solid var(--border); border-radius: 10px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.tree-item-info { flex: 1; min-width: 0; }
+.tree-item-no { font-size: 13px; font-weight: 600; color: var(--green); }
+.tree-item-sub { font-size: 12px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; flex-shrink: 0; }
+.badge-0 { background: var(--green-light); color: var(--green); }
+.badge-1 { background: var(--amber-light); color: var(--amber); }
+.badge-2 { background: var(--red-light); color: var(--red); }
+.badge-none { background: var(--gray-light); color: var(--muted); }
+
+/* カウンタ */
+.counter-box { background: var(--green-light); border-radius: 8px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--green); margin-bottom: 10px; }
+
+/* 設定画面 */
+.setting-info { background: var(--green-light); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; }
+.setting-info p { font-size: 13px; color: var(--green); font-weight: 600; }
+.setting-info small { font-size: 12px; color: var(--green); opacity: 0.8; }
+
+/* モーダル */
+.modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; display: flex; align-items: flex-end; }
+.modal { background: var(--white); border-radius: 20px 20px 0 0; padding: 20px 16px 40px; width: 100%; max-height: 90vh; overflow-y: auto; }
+.modal-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+.modal-actions { display: flex; gap: 8px; margin-top: 16px; }
+
+/* 路線選択バー */
+.route-bar { background: rgba(255,255,255,0.15); padding: 6px 14px; display: flex; align-items: center; gap: 8px; font-size: 12px; color: rgba(255,255,255,0.9); }
+.route-bar strong { color: #fff; }
+.route-change { font-size: 11px; color: rgba(255,255,255,0.7); text-decoration: underline; cursor: pointer; }
+
+.empty-msg { text-align: center; color: var(--muted); font-size: 14px; padding: 40px 20px; }
+.divider { border: none; border-top: 0.5px solid var(--border); margin: 12px 0; }
+
+/* Excel出力エリア */
+.export-card { background: var(--green); border-radius: 12px; padding: 16px; margin-bottom: 12px; color: #fff; }
+.export-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+.export-card p { font-size: 12px; opacity: 0.85; margin-bottom: 12px; }
+.export-btn { background: #fff; color: var(--green); border: none; padding: 10px 20px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; width: 100%; }
+
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <h1>🌳 樹木点検表</h1>
+    <div style="font-size:11px;opacity:0.8;">茨木土木 様式</div>
+  </div>
+  <div id="routeBar" class="route-bar hidden">
+    <span>路線：<strong id="routeBarName">-</strong></span>
+    <span class="route-change" onclick="showRouteModal()">変更</span>
+  </div>
+  <div class="tab-bar">
+    <div class="tab active" onclick="switchTab('input')" id="tab-input">入力</div>
+    <div class="tab" onclick="switchTab('list')" id="tab-list">一覧</div>
+    <div class="tab" onclick="switchTab('export')" id="tab-export">出力</div>
+    <div class="tab" onclick="switchTab('settings')" id="tab-settings">設定</div>
+  </div>
+</div>
+
+<!-- ─── 入力タブ ─────────────────────────── -->
+<div id="page-input" class="main">
+  <div class="card">
+    <div class="card-title">基本情報</div>
+    <div style="display:flex;gap:12px;font-size:11px;color:var(--muted);margin-bottom:10px;">
+      <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:3px;background:#dbeafe;border:1px solid #93c5fd;display:inline-block;"></span>前の木から引き継ぎ</span>
+      <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:3px;background:#dcfce7;border:1px solid #86efac;display:inline-block;"></span>毎回入力</span>
+    </div>
+    <div class="grid2">
+      <div class="field">
+        <label>図面番号 <span style="font-size:10px;color:#60a5fa;">引き継ぎ</span></label>
+        <input type="text" id="in-zumen" placeholder="例：左162" style="background:#eff6ff;">
+      </div>
+      <div class="field">
+        <label>桝番号 <span style="font-size:10px;color:#16a34a;font-weight:600;">★毎回入力</span></label>
+        <input type="text" id="in-masu" placeholder="例：162" style="background:#f0fdf4;border-color:#86efac;">
+      </div>
+      <div class="field">
+        <label>市名 <span style="font-size:10px;color:#60a5fa;">引き継ぎ</span></label>
+        <input type="text" id="in-city" placeholder="例：吹田市" style="background:#eff6ff;">
+      </div>
+      <div class="field">
+        <label>町名 <span style="font-size:10px;color:#60a5fa;">引き継ぎ</span></label>
+        <input type="text" id="in-town" placeholder="例：江坂町4" style="background:#eff6ff;">
+      </div>
+      <div class="field">
+        <label>樹種 <span style="font-size:10px;color:#60a5fa;">引き継ぎ</span></label>
+        <input type="text" id="in-species" placeholder="例：イチョウ" style="background:#eff6ff;">
+      </div>
+      <div class="field">
+        <label>幹周り（m） <span style="font-size:10px;color:#16a34a;font-weight:600;">★毎回入力</span></label>
+        <input type="number" id="in-trunk" placeholder="例：1.04" step="0.01" style="background:#f0fdf4;border-color:#86efac;">
+      </div>
+    </div>
+    <div class="field">
+      <label>点検日 <span style="font-size:10px;color:#60a5fa;">引き継ぎ</span></label>
+      <input type="date" id="in-date" style="background:#eff6ff;">
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="sec-header"><span>① 維持管理上の問題</span></div>
+    <div class="check-group" id="checks-1">
+      <label class="check-item"><input type="checkbox" value="建築限界越え車道側"><span>建築限界越え車道側</span></label>
+      <label class="check-item"><input type="checkbox" value="建築限界越え歩道側"><span>建築限界越え歩道側</span></label>
+      <label class="check-item"><input type="checkbox" value="道路施設との競合"><span>道路施設との競合</span></label>
+      <label class="check-item"><input type="checkbox" value="支柱直し・撤去"><span>支柱直し・撤去</span></label>
+      <label class="check-item"><input type="checkbox" value="太枝枯れ・折れ"><span>太枝枯れ・折れ</span></label>
+      <label class="check-item"><input type="checkbox" value="根上がり・舗装クラック"><span>根上がり・舗装クラック</span></label>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="sec-header"><span>② 活力点検</span></div>
+    <div class="check-group" id="checks-2">
+      <label class="check-item"><input type="checkbox" value="葉の状態"><span>葉の状態（異常）</span></label>
+      <label class="check-item"><input type="checkbox" value="先端枝の枯れ"><span>先端枝の枯れ</span></label>
+      <label class="check-item"><input type="checkbox" value="枯死・著しい衰弱"><span>枯死・著しい衰弱</span></label>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="sec-header"><span>③ 樹木の異常</span></div>
+    <div class="check-group" id="checks-3">
+      <label class="check-item"><input type="checkbox" value="キノコの有無"><span>キノコの有無</span></label>
+      <label class="check-item"><input type="checkbox" value="開口空洞"><span>開口空洞</span></label>
+      <label class="check-item"><input type="checkbox" value="樹皮枯死・欠損・腐朽"><span>樹皮枯死・欠損・腐朽</span></label>
+      <label class="check-item"><input type="checkbox" value="病虫害（穿孔痕・フラス）"><span>病虫害（穿孔痕・フラス）</span></label>
+      <label class="check-item"><input type="checkbox" value="揺れ"><span>揺れ</span></label>
+      <label class="check-item"><input type="checkbox" value="不自然な傾斜"><span>不自然な傾斜</span></label>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">特記事項</div>
+    <div class="field">
+      <textarea id="in-note" placeholder="キノコ発生の部位や種類、樹木異常の内容と部位、維持管理処置の必要理由や程度など"></textarea>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">点検結果</div>
+    <div class="result-btns">
+      <button class="result-btn" id="rb-0" onclick="selectResult(0)">概ね良好<br>異常なし</button>
+      <button class="result-btn" id="rb-1" onclick="selectResult(1)">維持管理の<br>処置が必要</button>
+      <button class="result-btn" id="rb-2" onclick="selectResult(2)">樹木の外観<br>診断が必要</button>
+    </div>
+  </div>
+
+  <button class="btn btn-primary" onclick="saveTree()" id="saveBtn">この木を保存</button>
+  <div id="saveMsg" style="text-align:center;color:var(--green);font-size:13px;margin-top:8px;display:none;">✓ 保存しました！</div>
+</div>
+
+<!-- ─── 一覧タブ ─────────────────────────── -->
+<div id="page-list" class="main hidden">
+  <div class="counter-box">
+    <span>📋 <strong id="listCount">0</strong> 本 登録済み</span>
+    <span id="listRouteName" style="font-size:12px;"></span>
+  </div>
+  <div id="treeList" class="tree-list">
+    <div class="empty-msg">まだデータがありません</div>
+  </div>
+</div>
+
+<!-- ─── 出力タブ ─────────────────────────── -->
+<div id="page-export" class="main hidden">
+  <div class="export-card">
+    <h3>📊 Excel出力</h3>
+    <p>現在の路線のデータを一覧シート＋個票シートのExcelファイルとして出力します</p>
+    <button class="export-btn" onclick="exportExcel()">Excel（.xlsx）をダウンロード</button>
+  </div>
+  <div class="card">
+    <div class="card-title">出力内容</div>
+    <div style="font-size:13px;color:var(--muted);line-height:2;">
+      ✅ 一覧シート（茨木土木様式）<br>
+      ✅ 個票シート（1本1シート）<br>
+      ✅ 路線名・点検者・事務所・点検日<br>
+      ✅ ①②③チェック項目・特記事項<br>
+      ✅ 点検結果（3区分）
+    </div>
+  </div>
+  <div class="card" id="exportStats">
+    <div class="card-title">現在のデータ</div>
+    <div id="exportStatsBody" style="font-size:13px;color:var(--muted);">データなし</div>
+  </div>
+</div>
+
+<!-- ─── 設定タブ ─────────────────────────── -->
+<div id="page-settings" class="main hidden">
+  <div class="setting-info">
+    <p>⚙️ 点検者・事務所は一度設定すれば引き継がれます</p>
+    <small>路線名は路線ごとに変更できます</small>
+  </div>
+  <div class="card">
+    <div class="card-title">点検者情報</div>
+    <div class="field">
+      <label>事務所名</label>
+      <input type="text" id="s-office" placeholder="例：茨木土木事務所">
+    </div>
+    <div class="field">
+      <label>点検者名</label>
+      <input type="text" id="s-inspector" placeholder="例：三宅　智（樹木医番号1105）">
+    </div>
+    <button class="btn btn-secondary btn-sm" onclick="saveSettings()" style="width:100%;">設定を保存</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">路線管理</div>
+    <div id="routeList" style="margin-bottom:10px;"></div>
+    <button class="btn btn-secondary btn-sm" onclick="showRouteModal()" style="width:100%;">＋ 新しい路線を追加</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title" style="color:var(--red);">データ管理</div>
+    <button class="btn btn-danger btn-sm" onclick="clearCurrentRoute()" style="width:100%;margin-bottom:8px;">現在の路線データを削除</button>
+    <button class="btn btn-danger btn-sm" onclick="clearAll()" style="width:100%;">全データを削除</button>
+  </div>
+</div>
+
+<!-- 路線モーダル -->
+<div id="routeModal" class="modal-bg hidden">
+  <div class="modal">
+    <div class="modal-title">路線の設定</div>
+    <div class="field">
+      <label>路線名</label>
+      <input type="text" id="m-routeName" placeholder="例：423号">
+    </div>
+    <div class="field">
+      <label>点検箇所（住所）開始</label>
+      <input type="text" id="m-addrStart" placeholder="例：吹田市江坂町4">
+    </div>
+    <div class="field">
+      <label>点検箇所（住所）終了</label>
+      <input type="text" id="m-addrEnd" placeholder="例：吹田市千里山園1">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" style="flex:1" onclick="hideRouteModal()">キャンセル</button>
+      <button class="btn btn-primary" style="flex:2" onclick="saveRoute()">この路線で開始</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── DB ───────────────────────────────────────
+let db;
+const DB_NAME = 'TreeInspection', DB_VER = 1;
+
+function openDB() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('trees')) {
+        const s = d.createObjectStore('trees', { keyPath: 'id', autoIncrement: true });
+        s.createIndex('routeId', 'routeId');
+      }
+      if (!d.objectStoreNames.contains('settings')) d.createObjectStore('settings', { keyPath: 'key' });
+      if (!d.objectStoreNames.contains('routes')) d.createObjectStore('routes', { keyPath: 'id', autoIncrement: true });
+    };
+    req.onsuccess = e => { db = e.target.result; res(db); };
+    req.onerror = e => rej(e);
+  });
+}
+function dbGet(store, key) {
+  return new Promise(res => db.transaction(store).objectStore(store).get(key).onsuccess = e => res(e.target.result));
+}
+function dbPut(store, val) {
+  return new Promise(res => db.transaction(store,'readwrite').objectStore(store).put(val).onsuccess = e => res(e.target.result));
+}
+function dbAdd(store, val) {
+  return new Promise(res => db.transaction(store,'readwrite').objectStore(store).add(val).onsuccess = e => res(e.target.result));
+}
+function dbGetAll(store) {
+  return new Promise(res => db.transaction(store).objectStore(store).getAll().onsuccess = e => res(e.target.result));
+}
+function dbDelete(store, key) {
+  return new Promise(res => db.transaction(store,'readwrite').objectStore(store).delete(key).onsuccess = () => res());
+}
+function dbGetByIndex(store, idx, val) {
+  return new Promise(res => {
+    const req = db.transaction(store).objectStore(store).index(idx).getAll(val);
+    req.onsuccess = e => res(e.target.result);
+  });
+}
+function dbClearStore(store) {
+  return new Promise(res => db.transaction(store,'readwrite').objectStore(store).clear().onsuccess = () => res());
+}
+
+// ─── 状態 ─────────────────────────────────────
+let currentRoute = null;
+let selectedResult = null;
+let editingTreeId = null;
+
+// ─── 初期化 ───────────────────────────────────
+async function init() {
+  await openDB();
+  const s = await dbGet('settings', 'inspector');
+  if (s) { document.getElementById('s-inspector').value = s.value || ''; }
+  const o = await dbGet('settings', 'office');
+  if (o) { document.getElementById('s-office').value = o.value || ''; }
+  const r = await dbGet('settings', 'currentRoute');
+  if (r && r.value) {
+    const route = await dbGet('routes', r.value);
+    if (route) setCurrentRoute(route);
+  }
+  document.getElementById('in-date').value = new Date().toISOString().split('T')[0];
+  setupCheckListeners();
+  if (!currentRoute) showRouteModal();
+}
+
+function setupCheckListeners() {
+  document.querySelectorAll('.check-item input[type=checkbox]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      cb.closest('.check-item').classList.toggle('checked', cb.checked);
+    });
+  });
+}
+
+// ─── タブ切替 ─────────────────────────────────
+function switchTab(name) {
+  ['input','list','export','settings'].forEach(t => {
+    document.getElementById('page-'+t).classList.toggle('hidden', t !== name);
+    document.getElementById('tab-'+t).classList.toggle('active', t === name);
+  });
+  if (name === 'list') renderList();
+  if (name === 'export') renderExportStats();
+  if (name === 'settings') renderRouteList();
+}
+
+// ─── 路線 ─────────────────────────────────────
+function setCurrentRoute(route) {
+  currentRoute = route;
+  document.getElementById('routeBar').classList.remove('hidden');
+  document.getElementById('routeBarName').textContent = route.name;
+}
+
+function showRouteModal() {
+  document.getElementById('routeModal').classList.remove('hidden');
+}
+function hideRouteModal() {
+  document.getElementById('routeModal').classList.add('hidden');
+}
+
+async function saveRoute() {
+  const name = document.getElementById('m-routeName').value.trim();
+  if (!name) { alert('路線名を入力してください'); return; }
+  const route = {
+    name,
+    addrStart: document.getElementById('m-addrStart').value.trim(),
+    addrEnd: document.getElementById('m-addrEnd').value.trim(),
+    createdAt: new Date().toISOString()
+  };
+  const id = await dbAdd('routes', route);
+  route.id = id;
+  await dbPut('settings', { key: 'currentRoute', value: id });
+  setCurrentRoute(route);
+  hideRouteModal();
+  // 通し番号リセット
+  await dbPut('settings', { key: 'seqNo_' + id, value: 0 });
+  renderRouteList();
+}
+
+async function switchRoute(id) {
+  const route = await dbGet('routes', id);
+  if (route) {
+    await dbPut('settings', { key: 'currentRoute', value: id });
+    setCurrentRoute(route);
+    alert(`路線を「${route.name}」に切り替えました`);
+  }
+}
+
+async function renderRouteList() {
+  const routes = await dbGetAll('routes');
+  const el = document.getElementById('routeList');
+  if (!routes.length) { el.innerHTML = '<div style="font-size:13px;color:var(--muted);">路線なし</div>'; return; }
+  el.innerHTML = routes.map(r => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid var(--border);">
+      <div>
+        <div style="font-size:13px;font-weight:600;">${r.name}</div>
+        <div style="font-size:11px;color:var(--muted);">${r.addrStart||''}${r.addrEnd?' ～ '+r.addrEnd:''}</div>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="switchRoute(${r.id})">選択</button>
+    </div>
+  `).join('');
+}
+
+// ─── 点検結果選択 ──────────────────────────────
+function selectResult(v) {
+  selectedResult = v;
+  [0,1,2].forEach(i => {
+    const b = document.getElementById('rb-'+i);
+    b.className = 'result-btn' + (i === v ? ' sel-'+i : '');
+  });
+}
+
+// ─── 保存 ─────────────────────────────────────
+function getChecked(groupId) {
+  return Array.from(document.querySelectorAll('#'+groupId+' input:checked')).map(c => c.value);
+}
+
+async function saveTree() {
+  if (!currentRoute) { alert('先に路線を設定してください'); showRouteModal(); return; }
+
+  const tree = {
+    routeId: currentRoute.id,
+    zumen: document.getElementById('in-zumen').value.trim(),
+    masu: document.getElementById('in-masu').value.trim(),
+    city: document.getElementById('in-city').value.trim(),
+    town: document.getElementById('in-town').value.trim(),
+    species: document.getElementById('in-species').value.trim(),
+    trunk: document.getElementById('in-trunk').value,
+    date: document.getElementById('in-date').value,
+    checks1: getChecked('checks-1'),
+    checks2: getChecked('checks-2'),
+    checks3: getChecked('checks-3'),
+    note: document.getElementById('in-note').value.trim(),
+    result: selectedResult,
+    savedAt: new Date().toISOString()
+  };
+
+  // 通し番号
+  const seqKey = 'seqNo_' + currentRoute.id;
+  const seqRec = await dbGet('settings', seqKey) || { key: seqKey, value: 0 };
+  seqRec.value += 1;
+  tree.seqNo = seqRec.value;
+  await dbPut('settings', seqRec);
+
+  if (editingTreeId) {
+    tree.id = editingTreeId;
+    await dbPut('trees', tree);
+    editingTreeId = null;
+  } else {
+    await dbAdd('trees', tree);
+  }
+
+  // 保存メッセージ
+  const msg = document.getElementById('saveMsg');
+  msg.style.display = 'block';
+  setTimeout(() => msg.style.display = 'none', 2000);
+
+  clearForm();
+}
+
+function clearForm() {
+  // 桝番号・幹周り・チェック・特記事項・点検結果のみリセット
+  // 図面番号・市名・町名・樹種・点検日は前の木から引き継ぐ
+  document.getElementById('in-masu').value = '';
+  document.getElementById('in-trunk').value = '';
+  document.getElementById('in-note').value = '';
+  document.querySelectorAll('.check-item input').forEach(c => { c.checked = false; c.closest('.check-item').classList.remove('checked'); });
+  selectedResult = null;
+  [0,1,2].forEach(i => document.getElementById('rb-'+i).className = 'result-btn');
+  editingTreeId = null;
+  document.getElementById('saveBtn').textContent = 'この木を保存';
+  // 保存後は桝番号にフォーカス
+  setTimeout(() => document.getElementById('in-masu').focus(), 100);
+  window.scrollTo(0, 0);
+}
+
+// ─── 一覧 ─────────────────────────────────────
+const RESULT_LABELS = ['概ね良好・異常なし', '維持管理の処置が必要', '樹木の外観診断が必要'];
+const RESULT_SHORT = ['概ね良好', '要維持管理', '要外観診断'];
+
+async function renderList() {
+  if (!currentRoute) { document.getElementById('treeList').innerHTML = '<div class="empty-msg">路線を設定してください</div>'; return; }
+  const trees = await dbGetByIndex('trees', 'routeId', currentRoute.id);
+  trees.sort((a,b) => a.seqNo - b.seqNo);
+  document.getElementById('listCount').textContent = trees.length;
+  document.getElementById('listRouteName').textContent = currentRoute.name;
+
+  if (!trees.length) {
+    document.getElementById('treeList').innerHTML = '<div class="empty-msg">この路線にデータがありません</div>';
+    return;
+  }
+
+  document.getElementById('treeList').innerHTML = trees.map(t => `
+    <div class="tree-item">
+      <div class="tree-item-info" onclick="editTree(${t.id})">
+        <div class="tree-item-no">No.${t.seqNo}　${t.zumen || '-'}${t.masu ? ' (' + t.masu + ')' : ''}</div>
+        <div class="tree-item-sub">${t.species||'樹種不明'}　幹周${t.trunk||'-'}m　${t.city||''}${t.town||''}</div>
+        <div class="tree-item-sub" style="margin-top:2px;">
+          ①:${t.checks1.length} ②:${t.checks2.length} ③:${t.checks3.length}件
+          ${t.note ? '　📝'+t.note.substring(0,15)+'...' : ''}
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+        <span class="badge ${t.result != null ? 'badge-'+t.result : 'badge-none'}">${t.result != null ? RESULT_SHORT[t.result] : '未選択'}</span>
+        <button class="btn btn-danger btn-sm" onclick="deleteTree(${t.id})">削除</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function editTree(id) {
+  const t = await dbGet('trees', id);
+  if (!t) return;
+  switchTab('input');
+  editingTreeId = id;
+  document.getElementById('in-zumen').value = t.zumen || '';
+  document.getElementById('in-masu').value = t.masu || '';
+  document.getElementById('in-city').value = t.city || '';
+  document.getElementById('in-town').value = t.town || '';
+  document.getElementById('in-species').value = t.species || '';
+  document.getElementById('in-trunk').value = t.trunk || '';
+  document.getElementById('in-date').value = t.date || '';
+  document.getElementById('in-note').value = t.note || '';
+
+  document.querySelectorAll('.check-item input').forEach(c => {
+    const checked = [...t.checks1, ...t.checks2, ...t.checks3].includes(c.value);
+    c.checked = checked;
+    c.closest('.check-item').classList.toggle('checked', checked);
+  });
+  if (t.result != null) selectResult(t.result);
+  document.getElementById('saveBtn').textContent = '更新して保存';
+  window.scrollTo(0,0);
+}
+
+async function deleteTree(id) {
+  if (!confirm('この木のデータを削除しますか？')) return;
+  await dbDelete('trees', id);
+  renderList();
+}
+
+// ─── 設定保存 ──────────────────────────────────
+async function saveSettings() {
+  await dbPut('settings', { key: 'inspector', value: document.getElementById('s-inspector').value.trim() });
+  await dbPut('settings', { key: 'office', value: document.getElementById('s-office').value.trim() });
+  alert('設定を保存しました');
+}
+
+// ─── 出力統計 ──────────────────────────────────
+async function renderExportStats() {
+  if (!currentRoute) { document.getElementById('exportStatsBody').textContent = '路線が設定されていません'; return; }
+  const trees = await dbGetByIndex('trees', 'routeId', currentRoute.id);
+  const r0 = trees.filter(t => t.result === 0).length;
+  const r1 = trees.filter(t => t.result === 1).length;
+  const r2 = trees.filter(t => t.result === 2).length;
+  document.getElementById('exportStatsBody').innerHTML = `
+    路線：<strong>${currentRoute.name}</strong><br>
+    合計：<strong>${trees.length}本</strong><br>
+    概ね良好：${r0}本　　要維持管理：${r1}本　　要外観診断：${r2}本
+  `;
+}
+
+// ─── Excel出力 ────────────────────────────────
+async function exportExcel() {
+  if (!currentRoute) { alert('路線を設定してください'); return; }
+  const trees = await dbGetByIndex('trees', 'routeId', currentRoute.id);
+  if (!trees.length) { alert('データがありません'); return; }
+  trees.sort((a,b) => a.seqNo - b.seqNo);
+
+  const inspector = (await dbGet('settings','inspector'))?.value || '';
+  const office = (await dbGet('settings','office'))?.value || '';
+
+  const wb = XLSX.utils.book_new();
+
+  // ── 一覧シート ─────────────────────────────
+  const listData = [];
+  listData.push(['樹木点検表', '', '', '', '', '', '', '', '点検事務所', '', '', office, '', '', '', '点検日', '', '', '', '', '', '', '']);
+  listData.push(['路線名', currentRoute.name, '', '', '', '', '', '', '点検者', '', '', inspector, '', '', '', '点検箇所', '', '', '', currentRoute.addrStart||'', '', '', currentRoute.addrEnd||'']);
+  listData.push([
+    '通し番号','図面番号','桝番号','市名','町名','樹木名','幹周り(m)',
+    '建築限界越え車道側','建築限界越え歩道側','道路施設との競合','支柱直し・撤去','太枝枯れ・折れ','根上がり・舗装クラック','①異常個数',
+    '葉の状態','先端枝の枯れ','枯死・著しい衰弱',
+    'キノコの有無','開口空洞','樹皮枯死・欠損・腐朽','病虫害(穿孔痕・フラス)','揺れ','不自然な傾斜','②③異常個数',
+    '特記事項','概ね良好・異常なし','維持管理の処置が必要','樹木の外観診断が必要'
+  ]);
+
+  for (const t of trees) {
+    const c1 = (v) => t.checks1.includes(v) ? '○' : '';
+    const c2 = (v) => t.checks2.includes(v) ? '○' : '';
+    const c3 = (v) => t.checks3.includes(v) ? '○' : '';
+    const cnt1 = t.checks1.length;
+    const cnt23 = t.checks2.length + t.checks3.length;
+    listData.push([
+      t.seqNo, t.zumen||'', t.masu||'', t.city||'', t.town||'', t.species||'', t.trunk||'',
+      c1('建築限界越え車道側'), c1('建築限界越え歩道側'), c1('道路施設との競合'), c1('支柱直し・撤去'), c1('太枝枯れ・折れ'), c1('根上がり・舗装クラック'), cnt1,
+      c2('葉の状態'), c2('先端枝の枯れ'), c2('枯死・著しい衰弱'),
+      c3('キノコの有無'), c3('開口空洞'), c3('樹皮枯死・欠損・腐朽'), c3('病虫害（穿孔痕・フラス）'), c3('揺れ'), c3('不自然な傾斜'), cnt23,
+      t.note||'',
+      t.result === 0 ? '○' : '', t.result === 1 ? '○' : '', t.result === 2 ? '○' : ''
+    ]);
+  }
+
+  const listWs = XLSX.utils.aoa_to_sheet(listData);
+  listWs['!cols'] = [
+    {wch:6},{wch:8},{wch:8},{wch:8},{wch:10},{wch:10},{wch:8},
+    {wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},
+    {wch:6},{wch:6},{wch:6},
+    {wch:6},{wch:6},{wch:8},{wch:8},{wch:6},{wch:8},{wch:6},
+    {wch:30},{wch:8},{wch:10},{wch:10}
+  ];
+  XLSX.utils.book_append_sheet(wb, listWs, '一覧');
+
+  // ── 個票シート（1本1シート） ─────────────────
+  for (const t of trees) {
+    const sheetData = [];
+    const chk = (v, arr) => arr.includes(v) ? '○' : '';
+    const dateStr = t.date ? t.date.replace(/-/g,'/') : '';
+
+    sheetData.push(['樹木点検表']);
+    sheetData.push([]);
+    sheetData.push(['通し番号', t.seqNo]);
+    sheetData.push(['路線名', '', currentRoute.name, '点検者', inspector, '', '', '', '点検日', dateStr]);
+    sheetData.push(['樹木番号', '', t.zumen||'', '樹種', t.species||'', '', '', '', '幹周り(m)', t.trunk||'']);
+    sheetData.push([]);
+    sheetData.push(['点検項目', '', '', '異常・該当あり', '', '', '点検項目', '', '', '異常・該当あり']);
+    sheetData.push(['①維持管理上の問題', '建築限界越え車道側', '', chk('建築限界越え車道側', t.checks1), '', '', '③樹木の異常', 'キノコの有無', '', chk('キノコの有無', t.checks3)]);
+    sheetData.push(['', '建築限界越え歩道側', '', chk('建築限界越え歩道側', t.checks1), '', '', '', '開口空洞', '', chk('開口空洞', t.checks3)]);
+    sheetData.push(['', '道路施設との競合', '', chk('道路施設との競合', t.checks1), '', '', '', '樹皮枯死・欠損・腐朽', '', chk('樹皮枯死・欠損・腐朽', t.checks3)]);
+    sheetData.push(['', '支柱直し・撤去', '', chk('支柱直し・撤去', t.checks1), '', '', '', '病虫害（穿孔痕・フラス）', '', chk('病虫害（穿孔痕・フラス）', t.checks3)]);
+    sheetData.push(['', '太枝枯れ・折れ', '', chk('太枝枯れ・折れ', t.checks1), '', '', '', '揺れ', '', chk('揺れ', t.checks3)]);
+    sheetData.push(['', '根上がり・舗装クラック', '', chk('根上がり・舗装クラック', t.checks1), '', '', '', '不自然な傾斜', '', chk('不自然な傾斜', t.checks3)]);
+    sheetData.push(['', '①の異常個数', '', t.checks1.length, '', '', '', '②＋③の異常個数', '', t.checks2.length + t.checks3.length]);
+    sheetData.push(['②活力点検', '葉の状態', '', chk('葉の状態', t.checks2), '', '', 'その他特記事項', t.note||'']);
+    sheetData.push(['', '先端枝の枯れ', '', chk('先端枝の枯れ', t.checks2)]);
+    sheetData.push(['', '枯死・著しい衰弱', '', chk('枯死・著しい衰弱', t.checks2)]);
+    sheetData.push([]);
+    sheetData.push(['点検結果', '', '概ね良好・異常なし', '維持管理の処置が必要', '', '', '', '', '樹木の外観診断が必要']);
+    sheetData.push(['', '', t.result===0?'○':'', t.result===1?'○':'', '', '', '', '', t.result===2?'○':'']);
+    sheetData.push([]);
+    sheetData.push(['全体・被害部写真']);
+
+    const ws = XLSX.utils.aoa_to_sheet(sheetData);
+    ws['!cols'] = [{wch:12},{wch:18},{wch:4},{wch:6},{wch:2},{wch:2},{wch:12},{wch:18},{wch:4},{wch:6}];
+    const sheetName = `${t.seqNo}_${(t.zumen||'').replace(/[\\\/\?\*\[\]]/g,'').substring(0,8) || t.species||'木'}`;
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  }
+
+  // ファイル名
+  const today = new Date();
+  const dateStr2 = `${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}`;
+  const filename = `樹木点検表_${currentRoute.name}_${dateStr2}.xlsx`;
+  XLSX.writeFile(wb, filename);
+}
+
+// ─── データ削除 ───────────────────────────────
+async function clearCurrentRoute() {
+  if (!currentRoute) return;
+  if (!confirm(`「${currentRoute.name}」のデータをすべて削除しますか？`)) return;
+  const trees = await dbGetByIndex('trees', 'routeId', currentRoute.id);
+  for (const t of trees) await dbDelete('trees', t.id);
+  await dbPut('settings', { key: 'seqNo_' + currentRoute.id, value: 0 });
+  alert('削除しました');
+}
+
+async function clearAll() {
+  if (!confirm('全データを削除しますか？この操作は元に戻せません')) return;
+  await dbClearStore('trees');
+  await dbClearStore('routes');
+  await dbClearStore('settings');
+  currentRoute = null;
+  document.getElementById('routeBar').classList.add('hidden');
+  alert('削除しました。ページをリロードしてください');
+  location.reload();
+}
+
+// ─── 起動 ─────────────────────────────────────
+init();
+</script>
+</body>
+</html>
