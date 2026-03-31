@@ -66,7 +66,7 @@ body{font-family:-apple-system,'Hiragino Sans','Noto Sans JP',sans-serif;backgro
 .export-card{background:var(--green);border-radius:12px;padding:16px;margin-bottom:12px;color:#fff;}
 .export-card h3{font-size:15px;font-weight:600;margin-bottom:4px;}
 .export-card p{font-size:12px;opacity:.85;margin-bottom:12px;}
-.export-btn{background:#fff;color:var(--green);border:none;padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;width:100%;}
+.export-btn{background:#fff;color:var(--green);border:none;padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;width:100%;margin-bottom:8px;}
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;display:flex;align-items:flex-end;}
 .modal{background:var(--white);border-radius:20px 20px 0 0;padding:20px 16px 40px;width:100%;max-height:90vh;overflow-y:auto;}
 .modal-title{font-size:16px;font-weight:600;margin-bottom:16px;}
@@ -76,9 +76,30 @@ body{font-family:-apple-system,'Hiragino Sans','Noto Sans JP',sans-serif;backgro
 .tag-inherit{background:#dbeafe;color:#1d4ed8;}
 .tag-input{background:#dcfce7;color:#15803d;}
 .hidden{display:none!important;}
+
+/* 写真エリア */
+.photo-section{margin-top:4px;}
+.photo-slots{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.photo-slot{position:relative;aspect-ratio:4/3;border-radius:10px;overflow:hidden;background:#f3f4f6;border:1.5px dashed var(--border);}
+.photo-slot.has-photo{border-style:solid;border-color:var(--green-m);}
+.photo-slot img{width:100%;height:100%;object-fit:cover;display:block;}
+.photo-slot-label{position:absolute;top:6px;left:6px;background:rgba(0,0,0,.6);color:#fff;font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;pointer-events:none;}
+.photo-slot-add{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;background:none;border:none;}
+.photo-slot-add span{font-size:26px;color:#9ca3af;}
+.photo-slot-add small{font-size:11px;color:var(--muted);}
+.photo-remove{position:absolute;top:5px;right:5px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.5);color:#fff;border:none;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.photo-hint{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5;}
+.photo-slot-2nd{opacity:.5;}
+.photo-slot-2nd.active{opacity:1;}
+
+/* 電子小黒板プレビュー */
+.blackboard-preview{position:absolute;bottom:8px;left:8px;right:8px;background:rgba(0,80,40,.88);border:1.5px solid #4caf78;border-radius:6px;padding:5px 7px;pointer-events:none;}
+.blackboard-preview .bb-row{display:flex;gap:4px;font-size:9px;color:#fff;line-height:1.6;white-space:nowrap;overflow:hidden;}
+.blackboard-preview .bb-label{color:#a7d7bc;flex-shrink:0;}
 </style>
 </head>
 <body>
+
 <div class="header">
   <div class="header-inner">
     <h1>🌳 樹木点検表</h1>
@@ -96,10 +117,10 @@ body{font-family:-apple-system,'Hiragino Sans','Noto Sans JP',sans-serif;backgro
   </div>
 </div>
 
-<!-- 入力 -->
+<!-- 入力タブ -->
 <div id="page-input" class="main">
   <div id="treeSelectCard" class="card hidden">
-    <div class="card-title">点検する木を選択（取り込みデータより）</div>
+    <div class="card-title">点検する木を選択</div>
     <div class="field">
       <select id="treeSelect" onchange="selectTree()">
         <option value="">── 木を選んでください ──</option>
@@ -117,11 +138,11 @@ body{font-family:-apple-system,'Hiragino Sans','Noto Sans JP',sans-serif;backgro
     <div class="grid2">
       <div class="field">
         <label>図面番号 <span class="info-tag tag-inherit">引継</span></label>
-        <input type="text" id="in-zumen" placeholder="例：左162" style="background:#eff6ff;">
+        <input type="text" id="in-zumen" placeholder="例：左162" style="background:#eff6ff;" oninput="updateBlackboards()">
       </div>
       <div class="field">
         <label>桝番号 <span class="info-tag tag-input">★入力</span></label>
-        <input type="text" id="in-masu" placeholder="例：162" style="background:#f0fdf4;border-color:#86efac;">
+        <input type="text" id="in-masu" placeholder="例：162" style="background:#f0fdf4;border-color:#86efac;" oninput="updateBlackboards()">
       </div>
       <div class="field">
         <label>市名 <span class="info-tag tag-inherit">引継</span></label>
@@ -133,7 +154,7 @@ body{font-family:-apple-system,'Hiragino Sans','Noto Sans JP',sans-serif;backgro
       </div>
       <div class="field">
         <label>樹種 <span class="info-tag tag-inherit">引継</span></label>
-        <input type="text" id="in-species" placeholder="例：イチョウ" style="background:#eff6ff;">
+        <input type="text" id="in-species" placeholder="例：イチョウ" style="background:#eff6ff;" oninput="updateBlackboards()">
       </div>
       <div class="field">
         <label>幹周り（m） <span class="info-tag tag-input">★入力</span></label>
@@ -181,7 +202,7 @@ body{font-family:-apple-system,'Hiragino Sans','Noto Sans JP',sans-serif;backgro
 
   <div class="card">
     <div class="card-title">特記事項</div>
-    <textarea id="in-note" placeholder="キノコ発生の部位や種類、樹木異常の内容と部位など"></textarea>
+    <textarea id="in-note" placeholder="キノコ発生の部位や種類、樹木異常の内容と部位など" oninput="updateBlackboards()"></textarea>
   </div>
 
   <div class="card">
@@ -193,11 +214,50 @@ body{font-family:-apple-system,'Hiragino Sans','Noto Sans JP',sans-serif;backgro
     </div>
   </div>
 
+  <!-- 写真撮影 -->
+  <div class="card">
+    <div class="card-title">📷 写真撮影（電子小黒板付き）</div>
+    <div class="photo-hint" style="margin-bottom:10px;">
+      ① 全景写真は必須。② 被害がある場合は被害部写真も撮影してください。
+    </div>
+    <div class="photo-slots">
+      <!-- 写真1：全景 -->
+      <div class="photo-slot" id="slot1">
+        <div class="blackboard-preview" id="bb1">
+          <div class="bb-row"><span class="bb-label">路線</span><span id="bb1-route">-</span></div>
+          <div class="bb-row"><span class="bb-label">図面</span><span id="bb1-zumen">-</span></div>
+          <div class="bb-row"><span class="bb-label">樹木</span><span id="bb1-masu">-</span></div>
+          <div class="bb-row"><span class="bb-label">樹種</span><span id="bb1-species">-</span></div>
+        </div>
+        <button class="photo-slot-add" onclick="triggerPhoto(1)">
+          <span>📷</span>
+          <small>全景写真</small>
+        </button>
+        <input type="file" id="photo1-input" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(event,1)">
+      </div>
+      <!-- 写真2：被害部 -->
+      <div class="photo-slot photo-slot-2nd" id="slot2">
+        <div class="blackboard-preview" id="bb2">
+          <div class="bb-row"><span class="bb-label">路線</span><span id="bb2-route">-</span></div>
+          <div class="bb-row"><span class="bb-label">図面</span><span id="bb2-zumen">-</span></div>
+          <div class="bb-row"><span class="bb-label">樹木</span><span id="bb2-masu">-</span></div>
+          <div class="bb-row"><span class="bb-label">特記</span><span id="bb2-note" style="overflow:hidden;text-overflow:ellipsis;max-width:80px;">-</span></div>
+        </div>
+        <button class="photo-slot-add" id="slot2-add" onclick="triggerPhoto(2)">
+          <span style="font-size:22px;color:#d1d5db;">📷</span>
+          <small style="color:#d1d5db;">被害部写真<br>（被害あり時）</small>
+        </button>
+        <input type="file" id="photo2-input" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(event,2)">
+      </div>
+    </div>
+    <div class="photo-hint" id="photoHint">被害項目にチェックを入れると2枚目が有効になります</div>
+  </div>
+
   <button class="btn btn-primary" onclick="saveTree()" id="saveBtn">この木を保存</button>
   <div id="saveMsg" style="text-align:center;color:var(--green);font-size:13px;margin-top:8px;display:none;">✓ 保存しました！</div>
 </div>
 
-<!-- 一覧 -->
+<!-- 一覧タブ -->
 <div id="page-list" class="main hidden">
   <div class="counter-box">
     <span>📋 <strong id="listTotal">0</strong>本中 <strong id="listDone">0</strong>本完了</span>
@@ -207,27 +267,37 @@ body{font-family:-apple-system,'Hiragino Sans','Noto Sans JP',sans-serif;backgro
   <div id="treeList" class="tree-list"><div class="empty-msg">まだデータがありません</div></div>
 </div>
 
-<!-- 出力 -->
+<!-- 出力タブ -->
 <div id="page-export" class="main hidden">
   <div class="import-card">
-    <h3>📥 役所データの取り込み（PC推奨）</h3>
-    <p>点検表Excelの一覧シートを読み込みます。図面番号・桝番号・市名・町名・樹種・幹周りを自動登録。現場では木を選んでチェックするだけになります。</p>
+    <h3>📥 役所データの取り込み</h3>
+    <p>点検表Excelの一覧シートを読み込みます。iPhoneの場合はファイルAppからOneDrive・Dropboxを選択できます。</p>
     <input type="file" id="importFile" accept=".xlsx,.xlsm,.xls" style="display:none" onchange="importExcel(event)">
     <button class="import-btn" onclick="document.getElementById('importFile').click()">📂 Excelファイルを取り込む</button>
     <div id="importResult" style="margin-top:8px;font-size:12px;color:#5b21b6;min-height:18px;"></div>
   </div>
+
   <div class="export-card">
-    <h3>📊 Excel出力（罫線・書式付き）</h3>
-    <p>一覧シート＋個票シート（1本1シート）でダウンロードします</p>
-    <button class="export-btn" onclick="exportExcel()">Excel（.xlsx）をダウンロード</button>
+    <h3>📊 データ出力</h3>
+    <p>クロードアドインでExcelテンプレートに転記します。CSVと写真をまとめてダウンロードしてください。</p>
+    <button class="export-btn" onclick="exportCSV()">📋 CSVをダウンロード（一覧転記用）</button>
+    <div style="font-size:12px;color:#e8f5ee;opacity:.85;margin-bottom:8px;">📷 写真は撮影時にiPhoneカメラロールへ自動保存されます</div>
+    <button class="export-btn" onclick="exportExcel()" style="background:#fff3e0;color:#e65100;">📊 Excelも出力（参考用）</button>
   </div>
+
+  <div class="card">
+    <div class="card-title">クロードアドインへの指示文</div>
+    <div id="claudePrompt" style="font-size:12px;color:var(--muted);background:#f3f4f6;border-radius:8px;padding:10px;line-height:1.8;white-space:pre-wrap;"></div>
+    <button class="btn btn-secondary btn-sm" onclick="copyPrompt()" style="width:100%;margin-top:8px;">📋 コピー</button>
+  </div>
+
   <div class="card">
     <div class="card-title">現在のデータ</div>
     <div id="exportStatsBody" style="font-size:13px;color:var(--muted);line-height:2;">データなし</div>
   </div>
 </div>
 
-<!-- 設定 -->
+<!-- 設定タブ -->
 <div id="page-settings" class="main hidden">
   <div class="card">
     <div class="card-title">点検者情報</div>
@@ -262,11 +332,13 @@ body{font-family:-apple-system,'Hiragino Sans','Noto Sans JP',sans-serif;backgro
 </div>
 
 <script>
-let db,currentRoute=null,selectedResult=null,editingTreeId=null,presetList=[];
+// ── IndexedDB ─────────────────────────────────
+let db, currentRoute=null, selectedResult=null, editingTreeId=null, presetList=[];
+let photo1Data=null, photo2Data=null;
 
 function openDB(){
   return new Promise((res,rej)=>{
-    const req=indexedDB.open('TreeInspV2',2);
+    const req=indexedDB.open('TreeInspV3',1);
     req.onupgradeneeded=e=>{
       const d=e.target.result;
       if(!d.objectStoreNames.contains('trees')){const s=d.createObjectStore('trees',{keyPath:'id',autoIncrement:true});s.createIndex('routeId','routeId');}
@@ -294,30 +366,37 @@ async function init(){
   if(r&&r.value){const route=await dbGet('routes',r.value);if(route)await setCurrentRoute(route);}
   document.getElementById('in-date').value=new Date().toISOString().split('T')[0];
   setupCheckListeners();
+  updateBlackboards();
   if(!currentRoute)showRouteModal();
 }
 
 function setupCheckListeners(){
   document.querySelectorAll('.check-item input[type=checkbox]').forEach(cb=>{
-    cb.addEventListener('change',()=>cb.closest('.check-item').classList.toggle('checked',cb.checked));
+    cb.addEventListener('change',()=>{
+      cb.closest('.check-item').classList.toggle('checked',cb.checked);
+      updatePhoto2State();
+    });
   });
 }
 
+// ── タブ切替 ──────────────────────────────────
 function switchTab(name){
   ['input','list','export','settings'].forEach(t=>{
     document.getElementById('page-'+t).classList.toggle('hidden',t!==name);
     document.getElementById('tab-'+t).classList.toggle('active',t===name);
   });
   if(name==='list')renderList();
-  if(name==='export')renderExportStats();
+  if(name==='export'){renderExportStats();renderClaudePrompt();}
   if(name==='settings')renderRouteList();
 }
 
+// ── 路線 ──────────────────────────────────────
 async function setCurrentRoute(route){
   currentRoute=route;
   document.getElementById('routeBar').classList.remove('hidden');
   document.getElementById('routeBarName').textContent=route.name;
   await loadPresets();
+  updateBlackboards();
 }
 function showRouteModal(){document.getElementById('routeModal').classList.remove('hidden');}
 function hideRouteModal(){document.getElementById('routeModal').classList.add('hidden');}
@@ -344,7 +423,223 @@ async function renderRouteList(){
     </div>`).join('');
 }
 
-// Excel取り込み
+// ── 電子小黒板 ────────────────────────────────
+function updateBlackboards(){
+  const route=currentRoute?currentRoute.name:'-';
+  const zumen=document.getElementById('in-zumen').value||'-';
+  const masu=document.getElementById('in-masu').value||'-';
+  const species=document.getElementById('in-species').value||'-';
+  const note=document.getElementById('in-note').value||'-';
+
+  // 小黒板1（全景）
+  document.getElementById('bb1-route').textContent=route;
+  document.getElementById('bb1-zumen').textContent=zumen;
+  document.getElementById('bb1-masu').textContent=masu;
+  document.getElementById('bb1-species').textContent=species;
+
+  // 小黒板2（被害部）
+  document.getElementById('bb2-route').textContent=route;
+  document.getElementById('bb2-zumen').textContent=zumen;
+  document.getElementById('bb2-masu').textContent=masu;
+  document.getElementById('bb2-note').textContent=note.length>12?note.substring(0,12)+'…':note;
+}
+
+// ── 写真スロット ──────────────────────────────
+function updatePhoto2State(){
+  const hasAbnormal=document.querySelectorAll('.check-item input:checked').length>0;
+  const slot2=document.getElementById('slot2');
+  const hint=document.getElementById('photoHint');
+  slot2.classList.toggle('photo-slot-2nd',!hasAbnormal);
+  slot2.classList.toggle('active',hasAbnormal);
+  if(hasAbnormal){
+    hint.textContent='被害あり → 被害部写真を撮影してください';
+    hint.style.color='var(--amber)';
+  } else {
+    hint.textContent='被害項目にチェックを入れると2枚目が有効になります';
+    hint.style.color='var(--muted)';
+  }
+}
+
+function triggerPhoto(n){
+  document.getElementById('photo'+n+'-input').click();
+}
+
+function handlePhoto(e, n){
+  const file=e.target.files[0];if(!file)return;
+  const label=n===1?'全景':'被害部';
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const dataUrl=ev.target.result;
+    compositeWithBlackboard(dataUrl, n, (composited)=>{
+      // カメラロールに保存
+      saveToPhotoLibrary(composited, n, label);
+      // アプリ内プレビューのみ表示（データは保持しない）
+      if(n===1) photo1Data='saved'; else photo2Data='saved';
+      renderPhotoSlot(n, composited, label);
+    });
+  };
+  reader.readAsDataURL(file);
+  e.target.value='';
+}
+
+function saveToPhotoLibrary(dataUrl, n, label){
+  // canvasをblobに変換してダウンロード（iOSはダウンロードが写真保存になる）
+  const zumen=document.getElementById('in-zumen').value||'';
+  const masu=document.getElementById('in-masu').value||'';
+  const filename=`点検_${zumen}${masu}_${label}.jpg`;
+  const a=document.createElement('a');
+  a.href=dataUrl;
+  a.download=filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+function compositeWithBlackboard(dataUrl, slotNum, callback){
+  const img=new Image();
+  img.onload=()=>{
+    // 長辺1200pxに縮小
+    const MAX=1200;
+    let w=img.width, h=img.height;
+    if(w>MAX||h>MAX){
+      if(w>h){h=Math.round(h*MAX/w);w=MAX;}
+      else{w=Math.round(w*MAX/h);h=MAX;}
+    }
+    const canvas=document.createElement('canvas');
+    canvas.width=w;canvas.height=h;
+    const ctx=canvas.getContext('2d');
+    ctx.drawImage(img,0,0,w,h);
+
+    // 電子小黒板描画
+    const route=currentRoute?currentRoute.name:'-';
+    const zumen=document.getElementById('in-zumen').value||'-';
+    const masu=document.getElementById('in-masu').value||'-';
+    const species=document.getElementById('in-species').value||'-';
+    const note=document.getElementById('in-note').value||'-';
+
+    const bw=Math.min(w*0.45, 200);
+    const bh=slotNum===1?80:80;
+    const bx=10, by=h-bh-10;
+    const fs=Math.max(10, Math.round(w*0.022));
+    const lh=fs+6;
+
+    // 背景
+    ctx.fillStyle='rgba(0,60,30,0.88)';
+    ctx.strokeStyle='#4caf78';
+    ctx.lineWidth=2;
+    roundRect(ctx, bx, by, bw, bh, 6);
+    ctx.fill();ctx.stroke();
+
+    // テキスト
+    ctx.font=`bold ${fs}px sans-serif`;
+    const rows=slotNum===1
+      ? [['路線',route],['図面',zumen],['樹木',masu],['樹種',species]]
+      : [['路線',route],['図面',zumen],['樹木',masu],['特記',note.length>10?note.substring(0,10)+'…':note]];
+
+    rows.forEach(([label,val],i)=>{
+      const y=by+fs+4+i*lh;
+      ctx.fillStyle='#a7d7bc';
+      ctx.fillText(label, bx+8, y);
+      ctx.fillStyle='#ffffff';
+      ctx.fillText(val, bx+8+fs*2.5, y);
+    });
+
+    callback(canvas.toDataURL('image/jpeg', 0.85));
+  };
+  img.src=dataUrl;
+}
+
+function roundRect(ctx, x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();
+}
+
+function renderPhotoSlot(n, dataUrl, label){
+  const slot=document.getElementById('slot'+n);
+  slot.innerHTML=`
+    <img src="${dataUrl}" alt="photo${n}">
+    <div class="photo-slot-label">${label}</div>
+    <button class="photo-remove" onclick="removePhoto(${n})">✕</button>
+    <input type="file" id="photo${n}-input" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(event,${n})">
+  `;
+  slot.classList.add('has-photo');
+}
+
+function removePhoto(n){
+  if(n===1)photo1Data=null;else photo2Data=null;
+  const slot=document.getElementById('slot'+n);
+  slot.classList.remove('has-photo');
+  const bbHtml=n===1
+    ? `<div class="blackboard-preview" id="bb1"><div class="bb-row"><span class="bb-label">路線</span><span id="bb1-route">-</span></div><div class="bb-row"><span class="bb-label">図面</span><span id="bb1-zumen">-</span></div><div class="bb-row"><span class="bb-label">樹木</span><span id="bb1-masu">-</span></div><div class="bb-row"><span class="bb-label">樹種</span><span id="bb1-species">-</span></div></div>`
+    : `<div class="blackboard-preview" id="bb2"><div class="bb-row"><span class="bb-label">路線</span><span id="bb2-route">-</span></div><div class="bb-row"><span class="bb-label">図面</span><span id="bb2-zumen">-</span></div><div class="bb-row"><span class="bb-label">樹木</span><span id="bb2-masu">-</span></div><div class="bb-row"><span class="bb-label">特記</span><span id="bb2-note">-</span></div></div>`;
+  const addBtn=n===1
+    ? `<button class="photo-slot-add" onclick="triggerPhoto(1)"><span>📷</span><small>全景写真</small></button><input type="file" id="photo1-input" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(event,1)">`
+    : `<button class="photo-slot-add" id="slot2-add" onclick="triggerPhoto(2)"><span style="font-size:22px;color:#d1d5db;">📷</span><small style="color:#d1d5db;">被害部写真<br>（被害あり時）</small></button><input type="file" id="photo2-input" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(event,2)">`;
+  slot.innerHTML=bbHtml+addBtn;
+  updateBlackboards();
+}
+
+// ── 点検結果選択 ──────────────────────────────
+function selectResult(v){
+  selectedResult=v;
+  [0,1,2].forEach(i=>document.getElementById('rb-'+i).className='result-btn'+(i===v?' sel-'+i:''));
+}
+
+function getChecked(gid){return Array.from(document.querySelectorAll('#'+gid+' input:checked')).map(c=>c.value);}
+
+// ── 保存 ──────────────────────────────────────
+async function saveTree(){
+  if(!currentRoute){alert('先に路線を設定してください');showRouteModal();return;}
+  const c1=getChecked('checks-1'),c2=getChecked('checks-2'),c3=getChecked('checks-3');
+  const tree={
+    routeId:currentRoute.id,
+    zumen:document.getElementById('in-zumen').value.trim(),
+    masu:document.getElementById('in-masu').value.trim(),
+    city:document.getElementById('in-city').value.trim(),
+    town:document.getElementById('in-town').value.trim(),
+    species:document.getElementById('in-species').value.trim(),
+    trunk:document.getElementById('in-trunk').value,
+    date:document.getElementById('in-date').value,
+    checks1:c1,checks2:c2,checks3:c3,
+    note:document.getElementById('in-note').value.trim(),
+    result:selectedResult,
+    photo1:photo1Data==='saved'?1:0,
+    photo2:photo2Data==='saved'?1:0,
+    savedAt:new Date().toISOString()
+  };
+  const seqKey='seqNo_'+currentRoute.id;
+  const seqRec=await dbGet('settings',seqKey)||{key:seqKey,value:0};
+  seqRec.value+=1;tree.seqNo=seqRec.value;
+  await dbPut('settings',seqRec);
+  if(editingTreeId){tree.id=editingTreeId;await dbPut('trees',tree);editingTreeId=null;}
+  else await dbAdd('trees',tree);
+  const msg=document.getElementById('saveMsg');
+  msg.style.display='block';setTimeout(()=>msg.style.display='none',2000);
+  clearForm();await updateTreeSelect();
+}
+
+function clearForm(){
+  document.getElementById('in-masu').value='';
+  document.getElementById('in-trunk').value='';
+  document.getElementById('in-note').value='';
+  document.querySelectorAll('.check-item input').forEach(c=>{c.checked=false;c.closest('.check-item').classList.remove('checked');});
+  selectedResult=null;
+  [0,1,2].forEach(i=>document.getElementById('rb-'+i).className='result-btn');
+  editingTreeId=null;
+  photo1Data=null;photo2Data=null;
+  document.getElementById('saveBtn').textContent='この木を保存';
+  document.getElementById('treeSelect').value='';
+  document.getElementById('selectedTreeInfo').textContent='';
+  removePhoto(1);removePhoto(2);
+  updatePhoto2State();
+  updateBlackboards();
+  window.scrollTo(0,0);
+}
+
+// ── Excel取り込み ─────────────────────────────
 async function importExcel(e){
   if(!currentRoute){alert('先に路線を設定してください');return;}
   const file=e.target.files[0];if(!file)return;
@@ -355,15 +650,11 @@ async function importExcel(e){
   if(wb.SheetNames.includes('一覧'))wsName='一覧';
   const ws=wb.Sheets[wsName];
   const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-
-  // ヘッダー行を探す
   let headerRow=2;
   for(let i=0;i<Math.min(rows.length,8);i++){
     const row=rows[i].map(c=>String(c));
     if(row.some(c=>c.includes('図面'))||row.some(c=>c.includes('桝')||c.includes('榠'))){headerRow=i;break;}
   }
-
-  // 列マッピング
   let cm={seq:0,zumen:1,masu:2,city:4,town:5,species:6,trunk:7};
   const hrow=rows[headerRow]||[];
   hrow.forEach((c,i)=>{
@@ -376,7 +667,6 @@ async function importExcel(e){
     else if(s.includes('樹木名')||s.includes('樹種'))cm.species=i;
     else if(s.includes('幹周'))cm.trunk=i;
   });
-
   let count=0;
   for(const row of rows.slice(headerRow+1)){
     const zumen=String(row[cm.zumen]||'').trim();
@@ -386,15 +676,7 @@ async function importExcel(e){
     const seqVal=row[cm.seq];
     if(typeof seqVal==='string'&&seqVal.startsWith('='))continue;
     if(seqVal===''&&!zumen&&!masu)continue;
-    await dbAdd('presets',{
-      routeId:currentRoute.id,
-      seqNo:seqVal||count+1,
-      zumen,masu,
-      city:String(row[cm.city]||'').trim(),
-      town:String(row[cm.town]||'').trim(),
-      species,
-      trunk:String(row[cm.trunk]||'').trim()
-    });
+    await dbAdd('presets',{routeId:currentRoute.id,seqNo:seqVal||count+1,zumen,masu,city:String(row[cm.city]||'').trim(),town:String(row[cm.town]||'').trim(),species,trunk:String(row[cm.trunk]||'').trim()});
     count++;
   }
   await loadPresets();
@@ -437,59 +719,11 @@ function selectTree(){
   document.getElementById('in-species').value=preset.species||'';
   document.getElementById('in-trunk').value=preset.trunk||'';
   document.getElementById('selectedTreeInfo').textContent=`${preset.city}${preset.town} / ${preset.species}`;
+  updateBlackboards();
   setTimeout(()=>document.getElementById(preset.trunk?'in-masu':'in-trunk').focus(),100);
 }
 
-function selectResult(v){
-  selectedResult=v;
-  [0,1,2].forEach(i=>document.getElementById('rb-'+i).className='result-btn'+(i===v?' sel-'+i:''));
-}
-
-function getChecked(gid){return Array.from(document.querySelectorAll('#'+gid+' input:checked')).map(c=>c.value);}
-
-async function saveTree(){
-  if(!currentRoute){alert('先に路線を設定してください');showRouteModal();return;}
-  const tree={
-    routeId:currentRoute.id,
-    zumen:document.getElementById('in-zumen').value.trim(),
-    masu:document.getElementById('in-masu').value.trim(),
-    city:document.getElementById('in-city').value.trim(),
-    town:document.getElementById('in-town').value.trim(),
-    species:document.getElementById('in-species').value.trim(),
-    trunk:document.getElementById('in-trunk').value,
-    date:document.getElementById('in-date').value,
-    checks1:getChecked('checks-1'),
-    checks2:getChecked('checks-2'),
-    checks3:getChecked('checks-3'),
-    note:document.getElementById('in-note').value.trim(),
-    result:selectedResult,
-    savedAt:new Date().toISOString()
-  };
-  const seqKey='seqNo_'+currentRoute.id;
-  const seqRec=await dbGet('settings',seqKey)||{key:seqKey,value:0};
-  seqRec.value+=1;tree.seqNo=seqRec.value;
-  await dbPut('settings',seqRec);
-  if(editingTreeId){tree.id=editingTreeId;await dbPut('trees',tree);editingTreeId=null;}
-  else await dbAdd('trees',tree);
-  const msg=document.getElementById('saveMsg');
-  msg.style.display='block';setTimeout(()=>msg.style.display='none',2000);
-  clearForm();await updateTreeSelect();
-}
-
-function clearForm(){
-  document.getElementById('in-masu').value='';
-  document.getElementById('in-trunk').value='';
-  document.getElementById('in-note').value='';
-  document.querySelectorAll('.check-item input').forEach(c=>{c.checked=false;c.closest('.check-item').classList.remove('checked');});
-  selectedResult=null;
-  [0,1,2].forEach(i=>document.getElementById('rb-'+i).className='result-btn');
-  editingTreeId=null;
-  document.getElementById('saveBtn').textContent='この木を保存';
-  document.getElementById('treeSelect').value='';
-  document.getElementById('selectedTreeInfo').textContent='';
-  window.scrollTo(0,0);
-}
-
+// ── 一覧 ──────────────────────────────────────
 const RESULT_SHORT=['概ね良好','要維持管理','要外観診断'];
 async function renderList(){
   if(!currentRoute){document.getElementById('treeList').innerHTML='<div class="empty-msg">路線を設定してください</div>';return;}
@@ -510,7 +744,11 @@ async function renderList(){
       <div class="tree-item-info" onclick="editTree(${t.id})">
         <div class="tree-item-no">No.${t.seqNo}　${t.zumen||'-'}（${t.masu||'-'}）</div>
         <div class="tree-item-sub">${t.species||'樹種不明'}　幹周${t.trunk||'-'}m　${t.city||''}${t.town||''}</div>
-        <div class="tree-item-sub" style="margin-top:2px">①:${t.checks1.length} ②:${t.checks2.length} ③:${t.checks3.length}件${t.note?' 📝'+t.note.substring(0,15):''}</div>
+        <div class="tree-item-sub" style="margin-top:2px">
+          ①:${t.checks1.length} ②:${t.checks2.length} ③:${t.checks3.length}件
+          ${t.photo1?'📷':''}${t.photo2?'📷':''}
+          ${t.note?' 📝'+t.note.substring(0,12):''}
+        </div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
         <span class="badge ${t.result!=null?'badge-'+t.result:'badge-none'}">${t.result!=null?RESULT_SHORT[t.result]:'未選択'}</span>
@@ -528,26 +766,120 @@ async function editTree(id){
     c.checked=checked;c.closest('.check-item').classList.toggle('checked',checked);
   });
   if(t.result!=null)selectResult(t.result);
+  if(t.photo1){photo1Data='saved';document.getElementById('slot1').innerHTML+='<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,80,40,.7);border-radius:10px;color:#fff;font-size:13px;font-weight:600;">📷 撮影済</div>';}
+  if(t.photo2){photo2Data='saved';document.getElementById('slot2').innerHTML+='<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,80,40,.7);border-radius:10px;color:#fff;font-size:13px;font-weight:600;">📷 撮影済</div>';}
+  updateBlackboards();updatePhoto2State();
   document.getElementById('saveBtn').textContent='更新して保存';
   window.scrollTo(0,0);
 }
 
 async function deleteTree(id){if(!confirm('このデータを削除しますか？'))return;await dbDelete('trees',id);renderList();}
 
+// ── 設定 ──────────────────────────────────────
 async function saveSettings(){
   await dbPut('settings',{key:'inspector',value:document.getElementById('s-inspector').value.trim()});
   await dbPut('settings',{key:'office',value:document.getElementById('s-office').value.trim()});
   alert('設定を保存しました');
 }
 
+// ── 出力統計・クロードプロンプト ──────────────
 async function renderExportStats(){
   if(!currentRoute){document.getElementById('exportStatsBody').textContent='路線が設定されていません';return;}
   const trees=await dbByIndex('trees','routeId',currentRoute.id);
   const r0=trees.filter(t=>t.result===0).length,r1=trees.filter(t=>t.result===1).length,r2=trees.filter(t=>t.result===2).length;
-  document.getElementById('exportStatsBody').innerHTML=`路線：<strong>${currentRoute.name}</strong><br>取り込み：<strong>${presetList.length}本</strong>　点検済み：<strong>${trees.length}本</strong><br>概ね良好：${r0}本　要維持管理：${r1}本　要外観診断：${r2}本`;
+  const withPhoto=trees.filter(t=>t.photo1).length;
+  document.getElementById('exportStatsBody').innerHTML=`路線：<strong>${currentRoute.name}</strong><br>取り込み：<strong>${presetList.length}本</strong>　点検済み：<strong>${trees.length}本</strong><br>概ね良好：${r0}本　要維持管理：${r1}本　要外観診断：${r2}本<br>写真撮影済み：${withPhoto}本（カメラロール保存）`;
 }
 
-// Excel出力（罫線・書式付き）
+async function renderClaudePrompt(){
+  if(!currentRoute){return;}
+  const trees=await dbByIndex('trees','routeId',currentRoute.id);
+  const inspector=(await dbGet('settings','inspector'))?.value||'';
+  const office=(await dbGet('settings','office'))?.value||'';
+  const prompt=`樹木点検表.xlsmを開いています。
+以下のCSVデータを一覧シートに転記し、各木の個票シートも作成してください。
+
+【路線名】${currentRoute.name}
+【点検者】${inspector}
+【事務所】${office}
+
+【転記手順】
+1. 一覧シートの5行目以降に、CSVの各行を1本1行で転記
+2. 各木の個票シート（左162等）に点検結果・特記事項を記入
+3. 点検結果の○を該当セルに記入
+4. 写真ファイル（点検_左162162_全景.jpg等）を個票の写真貼付欄に挿入
+   ※写真はiPhoneカメラロールからiCloudで取得してください
+
+CSVファイルを添付しています。`;
+  document.getElementById('claudePrompt').textContent=prompt;
+}
+
+function copyPrompt(){
+  const text=document.getElementById('claudePrompt').textContent;
+  navigator.clipboard.writeText(text).then(()=>alert('コピーしました！クロードアドインに貼り付けてください'));
+}
+
+// ── CSV出力 ───────────────────────────────────
+async function exportCSV(){
+  if(!currentRoute){alert('路線を設定してください');return;}
+  const trees=await dbByIndex('trees','routeId',currentRoute.id);
+  if(!trees.length){alert('データがありません');return;}
+  trees.sort((a,b)=>a.seqNo-b.seqNo);
+
+  const headers=['通し番号','図面番号','桝番号','市名','町名','樹種','幹周り(m)','建築限界越え車道側','建築限界越え歩道側','道路施設との競合','支柱直し・撤去','太枝枯れ・折れ','根上がり・舗装クラック','①異常数','葉の状態','先端枝の枯れ','枯死・著しい衰弱','キノコの有無','開口空洞','樹皮枯死・欠損・腐朽','病虫害（穿孔痕・フラス）','揺れ','不自然な傾斜','②③異常数','特記事項','概ね良好・異常なし','維持管理の処置が必要','樹木の外観診断が必要','点検日','写真ファイル1','写真ファイル2'];
+
+  const c1items=['建築限界越え車道側','建築限界越え歩道側','道路施設との競合','支柱直し・撤去','太枝枯れ・折れ','根上がり・舗装クラック'];
+  const c2items=['葉の状態','先端枝の枯れ','枯死・著しい衰弱'];
+  const c3items=['キノコの有無','開口空洞','樹皮枯死・欠損・腐朽','病虫害（穿孔痕・フラス）','揺れ','不自然な傾斜'];
+
+  const rows=[headers];
+  trees.forEach(t=>{
+    const chk=(v,arr)=>arr.includes(v)?'○':'';
+    rows.push([
+      t.seqNo, t.zumen||'', t.masu||'', t.city||'', t.town||'', t.species||'', t.trunk||'',
+      chk('建築限界越え車道側',t.checks1),chk('建築限界越え歩道側',t.checks1),chk('道路施設との競合',t.checks1),chk('支柱直し・撤去',t.checks1),chk('太枝枯れ・折れ',t.checks1),chk('根上がり・舗装クラック',t.checks1),t.checks1.length,
+      chk('葉の状態',t.checks2),chk('先端枝の枯れ',t.checks2),chk('枯死・著しい衰弱',t.checks2),
+      chk('キノコの有無',t.checks3),chk('開口空洞',t.checks3),chk('樹皮枯死・欠損・腐朽',t.checks3),chk('病虫害（穿孔痕・フラス）',t.checks3),chk('揺れ',t.checks3),chk('不自然な傾斜',t.checks3),t.checks2.length+t.checks3.length,
+      t.note||'',
+      t.result===0?'○':'', t.result===1?'○':'', t.result===2?'○':'',
+      t.date||'',
+      t.photo1?`点検_${t.zumen}${t.masu}_全景.jpg`:'',
+      t.photo2?`点検_${t.zumen}${t.masu}_被害部.jpg`:'',
+    ]);
+  });
+
+  const bom='\uFEFF';
+  const csv=bom+rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const today=new Date();
+  const ds=`${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}`;
+  downloadBlob(blob,`樹木点検_${currentRoute.name}_${ds}.csv`);
+}
+
+// 写真はカメラロールに保存済みのため一括ダウンロード不要
+
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+function downloadDataUrl(dataUrl, filename){
+  return new Promise(res=>{
+    const a=document.createElement('a');
+    a.href=dataUrl;a.download=filename;
+    document.body.appendChild(a);a.click();
+    document.body.removeChild(a);
+    setTimeout(res, 100);
+  });
+}
+
+function downloadBlob(blob, filename){
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=filename;
+  document.body.appendChild(a);a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ── Excel出力（参考用） ───────────────────────
 async function exportExcel(){
   if(!currentRoute){alert('路線を設定してください');return;}
   const trees=await dbByIndex('trees','routeId',currentRoute.id);
@@ -555,164 +887,30 @@ async function exportExcel(){
   trees.sort((a,b)=>a.seqNo-b.seqNo);
   const inspector=(await dbGet('settings','inspector'))?.value||'';
   const office=(await dbGet('settings','office'))?.value||'';
-  const today=new Date();
-  const dateStr=`${today.getFullYear()}/${String(today.getMonth()+1).padStart(2,'0')}/${String(today.getDate()).padStart(2,'0')}`;
   const wb=XLSX.utils.book_new();
-
-  // スタイル定数
-  const thin={style:'thin',color:{rgb:'000000'}};
-  const med={style:'medium',color:{rgb:'000000'}};
-  const bAll={top:thin,bottom:thin,left:thin,right:thin};
-  const bMed={top:med,bottom:med,left:med,right:med};
-  const gFill={patternType:'solid',fgColor:{rgb:'1a7a4a'}};
-  const glFill={patternType:'solid',fgColor:{rgb:'e8f5ee'}};
-  const y1Fill={patternType:'solid',fgColor:{rgb:'fff9db'}};
-  const y2Fill={patternType:'solid',fgColor:{rgb:'e8f5ee'}};
-  const y3Fill={patternType:'solid',fgColor:{rgb:'fde8e8'}};
-  const ctr={horizontal:'center',vertical:'center',wrapText:true};
-  const lft={horizontal:'left',vertical:'center',wrapText:true};
-
-  function C(v,font,fill,border,align){
-    const c={v:v===null||v===undefined?'':v,t:typeof v==='number'?'n':'s'};
-    const s={};
-    if(font)s.font=font;if(fill)s.fill=fill;if(border)s.border=border;if(align)s.alignment=align;
-    if(Object.keys(s).length)c.s=s;
-    return c;
-  }
-
-  // ─── 一覧シート ───────────────────────────
-  const ws={};
-  ws['A1']=C('樹木点検表',{bold:true,sz:13,color:{rgb:'FFFFFF'}},gFill,bMed,ctr);
-  ws['I1']=C('点検事務所',{bold:true,sz:9},glFill,bAll,ctr);
-  ws['L1']=C(office,{sz:9},null,bAll,lft);
-  ws['P1']=C('点検日',{bold:true,sz:9},glFill,bAll,ctr);
-  ws['T1']=C(dateStr,{sz:9},null,bAll,lft);
-  ws['A2']=C('路線名',{bold:true,sz:9},glFill,bAll,ctr);
-  ws['B2']=C(currentRoute.name,{sz:9},null,bAll,lft);
-  ws['I2']=C('点検者',{bold:true,sz:9},glFill,bAll,ctr);
-  ws['L2']=C(inspector,{sz:9},null,bAll,lft);
-  ws['P2']=C('点検箇所',{bold:true,sz:9},glFill,bAll,ctr);
-  ws['T2']=C((currentRoute.addrStart||'')+(currentRoute.addrEnd?' ～ '+currentRoute.addrEnd:''),{sz:9},null,bAll,lft);
-
-  const hcols=['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z','AA','AB'];
-  const htxts=['通し番号','図面番号','桝番号','市名','町名','樹木名','幹周り(m)','建築限界越え\n車道側','建築限界越え\n歩道側','道路施設\nとの競合','支柱直し\n撤去','太枝枯れ\n折れ','根上がり\n舗装クラック','①\n異常数','葉の\n状態','先端枝\nの枯れ','枯死・\n著しい衰弱','キノコ\nの有無','開口\n空洞','樹皮枯死\n欠損・腐朽','病虫害\n穿孔痕','揺れ','不自然\nな傾斜','②③\n異常数','特記事項','概ね良好\n異常なし','維持管理の\n処置が必要','樹木の外観\n診断が必要'];
-  hcols.forEach((col,i)=>{ws[col+'3']=C(htxts[i],{bold:true,sz:8,color:{rgb:'FFFFFF'}},gFill,bAll,ctr);});
-
-  trees.forEach((t,idx)=>{
-    const row=idx+4;
-    const c1=v=>t.checks1.includes(v)?'○':'';
-    const c2=v=>t.checks2.includes(v)?'○':'';
-    const c3=v=>t.checks3.includes(v)?'○':'';
-    const vals=[
-      t.seqNo,t.zumen||'',t.masu||'',t.city||'',t.town||'',t.species||'',t.trunk?Number(t.trunk):'',
-      c1('建築限界越え車道側'),c1('建築限界越え歩道側'),c1('道路施設との競合'),c1('支柱直し・撤去'),c1('太枝枯れ・折れ'),c1('根上がり・舗装クラック'),t.checks1.length,
-      c2('葉の状態'),c2('先端枝の枯れ'),c2('枯死・著しい衰弱'),
-      c3('キノコの有無'),c3('開口空洞'),c3('樹皮枯死・欠損・腐朽'),c3('病虫害（穿孔痕・フラス）'),c3('揺れ'),c3('不自然な傾斜'),t.checks2.length+t.checks3.length,
-      t.note||'',t.result===0?'○':'',t.result===1?'○':'',t.result===2?'○':''
-    ];
-    hcols.forEach((col,i)=>{
-      const v=vals[i];
-      const isOmaru=v==='○';
-      const fill=isOmaru?(i>=7&&i<=12?y1Fill:i>=14&&i<=16?y2Fill:i>=17&&i<=22?y3Fill:null):null;
-      ws[col+row]={v:v,t:typeof v==='number'?'n':'s',s:{border:bAll,alignment:ctr,font:{sz:9},...(fill?{fill}:{})}};
-    });
-  });
-
-  ws['!ref']=`A1:AB${trees.length+3}`;
-  ws['!cols']=[{wch:5},{wch:8},{wch:7},{wch:8},{wch:10},{wch:10},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:6},{wch:7},{wch:5},{wch:6},{wch:6},{wch:7},{wch:6},{wch:6},{wch:8},{wch:7},{wch:5},{wch:7},{wch:5},{wch:25},{wch:7},{wch:8},{wch:8}];
-  ws['!rows']=[{hpt:22},{hpt:18},{hpt:40},...Array(trees.length).fill({hpt:16})];
-  ws['!merges']=[
-    {s:{r:0,c:0},e:{r:0,c:7}},{s:{r:0,c:11},e:{r:0,c:14}},{s:{r:0,c:19},e:{r:0,c:23}},
-    {s:{r:1,c:1},e:{r:1,c:7}},{s:{r:1,c:11},e:{r:1,c:14}},{s:{r:1,c:19},e:{r:1,c:27}}
+  const listData=[
+    ['樹木点検表','','','','','','','','点検事務所','','',office,'','','','点検日','','','','','','',''],
+    ['路線名',currentRoute.name,'','','','','','','点検者','','',inspector,'','','','点検箇所','','','',currentRoute.addrStart||'','','',currentRoute.addrEnd||''],
+    ['通し番号','図面番号','桝番号','市名','町名','樹木名','幹周り(m)','建築限界越え車道側','建築限界越え歩道側','道路施設との競合','支柱直し・撤去','太枝枯れ・折れ','根上がり・舗装クラック','①異常数','葉の状態','先端枝の枯れ','枯死・著しい衰弱','キノコの有無','開口空洞','樹皮枯死・欠損・腐朽','病虫害','揺れ','不自然な傾斜','②③異常数','特記事項','概ね良好','要維持管理','要外観診断']
   ];
+  trees.forEach(t=>{
+    const c=v=>t.checks1.includes(v)||t.checks2.includes(v)||t.checks3.includes(v)?'○':'';
+    listData.push([
+      t.seqNo,t.zumen||'',t.masu||'',t.city||'',t.town||'',t.species||'',t.trunk||'',
+      c('建築限界越え車道側'),c('建築限界越え歩道側'),c('道路施設との競合'),c('支柱直し・撤去'),c('太枝枯れ・折れ'),c('根上がり・舗装クラック'),t.checks1.length,
+      c('葉の状態'),c('先端枝の枯れ'),c('枯死・著しい衰弱'),
+      c('キノコの有無'),c('開口空洞'),c('樹皮枯死・欠損・腐朽'),c('病虫害（穿孔痕・フラス）'),c('揺れ'),c('不自然な傾斜'),t.checks2.length+t.checks3.length,
+      t.note||'',t.result===0?'○':'',t.result===1?'○':'',t.result===2?'○':''
+    ]);
+  });
+  const ws=XLSX.utils.aoa_to_sheet(listData);
   XLSX.utils.book_append_sheet(wb,ws,'一覧');
-
-  // ─── 個票シート ───────────────────────────
-  for(const t of trees){
-    const iws={};
-    const chk=(v,arr)=>arr.includes(v)?'○':'';
-    const dStr=t.date?t.date.replace(/-/g,'/'):'';
-    const wB={bold:true,sz:9,color:{rgb:'FFFFFF'}};
-    const wG={bold:true,sz:9,color:{rgb:'1a7a4a'}};
-    const n9={sz:9};
-    const red={sz:12,bold:true,color:{rgb:'b91c1c'}};
-
-    iws['A1']=C('樹木点検表',{bold:true,sz:13,color:{rgb:'FFFFFF'}},gFill,bMed,ctr);
-    iws['A3']=C('路線名',wG,glFill,bAll,ctr);iws['C3']=C(currentRoute.name,n9,null,bAll,lft);
-    iws['F3']=C('点検者',wG,glFill,bAll,ctr);iws['H3']=C(inspector,n9,null,bAll,lft);
-    iws['J3']=C('点検日',wG,glFill,bAll,ctr);iws['L3']=C(dStr,n9,null,bAll,lft);
-    iws['A4']=C('樹木番号',wG,glFill,bAll,ctr);iws['C4']=C((t.zumen||'')+(t.masu?' ('+t.masu+')':''),n9,null,bAll,lft);
-    iws['F4']=C('樹種',wG,glFill,bAll,ctr);iws['H4']=C(t.species||'',n9,null,bAll,lft);
-    iws['J4']=C('幹周り(m)',wG,glFill,bAll,ctr);iws['L4']=C(t.trunk?Number(t.trunk):'',n9,null,bAll,ctr);
-
-    iws['A6']=C('点検項目',wG,glFill,bAll,ctr);iws['E6']=C('異常',wG,glFill,bAll,ctr);
-    iws['G6']=C('点検項目',wG,glFill,bAll,ctr);iws['L6']=C('異常',wG,glFill,bAll,ctr);
-
-    const c1rows=[['建築限界越え車道側','建築限界越え車道側'],['建築限界越え歩道側','建築限界越え歩道側'],['道路施設との競合','道路施設との競合'],['支柱直し・撤去','支柱直し・撤去'],['太枝枯れ・折れ','太枝枯れ・折れ'],['根上がり・舗装クラック','根上がり・舗装クラック']];
-    iws['A7']=C('①維持管理上の問題',{bold:true,sz:9},y1Fill,bAll,ctr);
-    c1rows.forEach(([label,val],i)=>{
-      iws['B'+(7+i)]=C(label,n9,null,bAll,lft);
-      iws['E'+(7+i)]=C(chk(val,t.checks1),red,null,bAll,ctr);
-      if(i>0)iws['A'+(7+i)]=C('',n9,y1Fill,bAll,ctr);
-    });
-    iws['B13']=C('①の異常個数',n9,glFill,bAll,lft);iws['E13']=C(t.checks1.length,{sz:9},null,bAll,ctr);
-
-    const c3rows=[['キノコの有無','キノコの有無'],['開口空洞','開口空洞'],['樹皮枯死・欠損・腐朽','樹皮枯死・欠損・腐朽'],['病虫害（穿孔痕・フラス）','病虫害（穿孔痕・フラス）'],['揺れ','揺れ'],['不自然な傾斜','不自然な傾斜']];
-    iws['G7']=C('③樹木の異常',{bold:true,sz:9},y3Fill,bAll,ctr);
-    c3rows.forEach(([label,val],i)=>{
-      iws['H'+(7+i)]=C(label,n9,null,bAll,lft);
-      iws['L'+(7+i)]=C(chk(val,t.checks3),red,null,bAll,ctr);
-      if(i>0)iws['G'+(7+i)]=C('',n9,y3Fill,bAll,ctr);
-    });
-    iws['H13']=C('②＋③の異常個数',n9,glFill,bAll,lft);iws['L13']=C(t.checks2.length+t.checks3.length,{sz:9},null,bAll,ctr);
-
-    iws['A15']=C('②活力点検',{bold:true,sz:9},y2Fill,bAll,ctr);
-    [['葉の状態（異常）','葉の状態'],['先端枝の枯れ','先端枝の枯れ'],['枯死・著しい衰弱','枯死・著しい衰弱']].forEach(([label,val],i)=>{
-      iws['B'+(15+i)]=C(label,n9,null,bAll,lft);
-      iws['E'+(15+i)]=C(chk(val,t.checks2),red,null,bAll,ctr);
-      if(i>0)iws['A'+(15+i)]=C('',n9,y2Fill,bAll,ctr);
-    });
-
-    iws['G15']=C('その他特記事項',wG,glFill,bAll,ctr);
-    iws['H15']=C(t.note||'',n9,null,bAll,lft);
-
-    iws['A19']=C('点検結果',{bold:true,sz:10},glFill,bMed,ctr);
-    iws['C19']=C('概ね良好・異常なし',{bold:true,sz:9,color:{rgb:'1a7a4a'}},t.result===0?{patternType:'solid',fgColor:{rgb:'d1fae5'}}:null,bAll,ctr);
-    iws['F19']=C('維持管理の処置が必要',{bold:true,sz:9,color:{rgb:'b45309'}},t.result===1?{patternType:'solid',fgColor:{rgb:'fef3c7'}}:null,bAll,ctr);
-    iws['J19']=C('樹木の外観診断が必要',{bold:true,sz:9,color:{rgb:'b91c1c'}},t.result===2?{patternType:'solid',fgColor:{rgb:'fee2e2'}}:null,bAll,ctr);
-    iws['C20']=C(t.result===0?'○':'',{bold:true,sz:16,color:{rgb:'1a7a4a'}},null,bAll,ctr);
-    iws['F20']=C(t.result===1?'○':'',{bold:true,sz:16,color:{rgb:'b45309'}},null,bAll,ctr);
-    iws['J20']=C(t.result===2?'○':'',{bold:true,sz:16,color:{rgb:'b91c1c'}},null,bAll,ctr);
-    iws['A22']=C('全体・被害部 写真貼付欄',{bold:true,sz:9},glFill,bAll,lft);
-
-    iws['!ref']='A1:L30';
-    iws['!cols']=[{wch:11},{wch:16},{wch:4},{wch:4},{wch:5},{wch:11},{wch:11},{wch:18},{wch:4},{wch:4},{wch:4},{wch:5}];
-    iws['!rows']=[{hpt:24},{hpt:6},{hpt:16},{hpt:16},{hpt:6},{hpt:16},{hpt:16},{hpt:16},{hpt:16},{hpt:16},{hpt:16},{hpt:16},{hpt:16},{hpt:6},{hpt:16},{hpt:16},{hpt:16},{hpt:6},{hpt:20},{hpt:20},{hpt:6},{hpt:16}];
-    iws['!merges']=[
-      {s:{r:0,c:0},e:{r:0,c:11}},
-      {s:{r:2,c:0},e:{r:2,c:1}},{s:{r:2,c:2},e:{r:2,c:4}},{s:{r:2,c:5},e:{r:2,c:6}},{s:{r:2,c:7},e:{r:2,c:8}},{s:{r:2,c:9},e:{r:2,c:10}},{s:{r:2,c:11},e:{r:2,c:11}},
-      {s:{r:3,c:0},e:{r:3,c:1}},{s:{r:3,c:2},e:{r:3,c:4}},{s:{r:3,c:5},e:{r:3,c:6}},{s:{r:3,c:7},e:{r:3,c:8}},{s:{r:3,c:9},e:{r:3,c:10}},{s:{r:3,c:11},e:{r:3,c:11}},
-      {s:{r:5,c:0},e:{r:5,c:3}},{s:{r:5,c:4},e:{r:5,c:4}},{s:{r:5,c:6},e:{r:5,c:9}},{s:{r:5,c:11},e:{r:5,c:11}},
-      {s:{r:6,c:0},e:{r:12,c:0}},{s:{r:6,c:1},e:{r:6,c:3}},{s:{r:6,c:6},e:{r:12,c:6}},{s:{r:6,c:7},e:{r:6,c:9}},
-      {s:{r:7,c:1},e:{r:7,c:3}},{s:{r:8,c:1},e:{r:8,c:3}},{s:{r:9,c:1},e:{r:9,c:3}},{s:{r:10,c:1},e:{r:10,c:3}},{s:{r:11,c:1},e:{r:11,c:3}},
-      {s:{r:7,c:7},e:{r:7,c:9}},{s:{r:8,c:7},e:{r:8,c:9}},{s:{r:9,c:7},e:{r:9,c:9}},{s:{r:10,c:7},e:{r:10,c:9}},{s:{r:11,c:7},e:{r:11,c:9}},
-      {s:{r:12,c:1},e:{r:12,c:3}},{s:{r:12,c:7},e:{r:12,c:9}},
-      {s:{r:14,c:0},e:{r:16,c:0}},{s:{r:14,c:1},e:{r:14,c:3}},{s:{r:15,c:1},e:{r:15,c:3}},{s:{r:16,c:1},e:{r:16,c:3}},
-      {s:{r:14,c:6},e:{r:16,c:6}},{s:{r:14,c:7},e:{r:17,c:11}},
-      {s:{r:18,c:0},e:{r:19,c:1}},{s:{r:18,c:2},e:{r:18,c:4}},{s:{r:19,c:2},e:{r:19,c:4}},
-      {s:{r:18,c:5},e:{r:18,c:8}},{s:{r:19,c:5},e:{r:19,c:8}},
-      {s:{r:18,c:9},e:{r:18,c:11}},{s:{r:19,c:9},e:{r:19,c:11}},
-      {s:{r:21,c:0},e:{r:21,c:11}}
-    ];
-
-    const sName=`${t.seqNo}_${(t.zumen||'').replace(/[\\\/\?\*\[\]':]/g,'').substring(0,6)||t.species||'木'}`;
-    XLSX.utils.book_append_sheet(wb,iws,sName);
-  }
-
-  const fname=`樹木点検表_${currentRoute.name}_${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}.xlsx`;
-  XLSX.writeFile(wb,fname);
+  const today=new Date();
+  const ds=`${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}`;
+  XLSX.writeFile(wb,`樹木点検表_${currentRoute.name}_${ds}.xlsx`);
 }
 
+// ── データ削除 ────────────────────────────────
 async function clearCurrentRoute(){
   if(!currentRoute)return;
   if(!confirm(`「${currentRoute.name}」のデータをすべて削除しますか？`))return;
