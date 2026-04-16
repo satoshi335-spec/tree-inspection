@@ -279,18 +279,30 @@ body{font-family:-apple-system,'Hiragino Sans','Noto Sans JP',sans-serif;backgro
   <!-- iPhone用ガイド -->
   <div id="iosGuide" class="hidden">
     <div style="background:#fff8e1;border:.5px solid #ffc107;border-radius:12px;padding:16px;margin-bottom:12px;">
-      <div style="font-size:14px;font-weight:600;color:#856404;margin-bottom:8px;">📱 現場での運用（iPhone）</div>
-      <div style="font-size:13px;color:#856404;line-height:2;">
-        ① 入力・点検結果をここで保存<br>
-        ② 写真は撮影後に自動で写真アプリに保存<br>
-        ③ 1日終わったらOneDriveに同期<br>
-        ④ <strong>CSV出力・Coworkへの転記はPCで行ってください</strong>
+      <div style="font-size:14px;font-weight:600;color:#856404;margin-bottom:8px;">📱 iPhoneでの運用フロー</div>
+      <div style="font-size:13px;color:#856404;line-height:2.2;">
+        ① 木を選択して入力・点検結果を入力<br>
+        ② 写真を撮影（小黒板自動合成）<br>
+        ③ 「この木を保存」→ <strong>自動で写真アプリに保存</strong><br>
+        ④ 1日終わったら下のCSVをAirDropでPCへ送信<br>
+        ⑤ PCのCoworkでExcelに転記
       </div>
     </div>
+
     <div style="background:#e8f5ee;border:.5px solid #4caf78;border-radius:12px;padding:16px;margin-bottom:12px;">
-      <div style="font-size:14px;font-weight:600;color:#1a7a4a;margin-bottom:8px;">📷 写真をiPhone写真アプリに保存</div>
-      <div style="font-size:12px;color:#1a7a4a;margin-bottom:10px;">小黒板合成済みの写真を1枚ずつ写真アプリに保存します</div>
-      <button onclick="savePhotosToLibrary()" style="background:#1a7a4a;color:#fff;border:none;padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;width:100%;">📸 写真を写真アプリに保存</button>
+      <div style="font-size:14px;font-weight:600;color:#1a7a4a;margin-bottom:4px;">📤 CSVをAirDropでPCに送信</div>
+      <div style="font-size:12px;color:#1a7a4a;margin-bottom:10px;">PCのSafari/Chromeで受信し、Coworkに渡してください</div>
+      <button onclick="exportCSVandShare()" style="background:#1a7a4a;color:#fff;border:none;padding:11px 20px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;width:100%;">① CSVを作成してAirDropで送信</button>
+    </div>
+
+    <div style="background:#e8f5ee;border:.5px solid #4caf78;border-radius:12px;padding:16px;margin-bottom:12px;">
+      <div style="font-size:14px;font-weight:600;color:#1a7a4a;margin-bottom:4px;">📷 写真の確認</div>
+      <div style="font-size:13px;color:#1a7a4a;line-height:1.8;">
+        「この木を保存」を押すたびに<br>
+        写真アプリへの共有シートが自動表示されます。<br>
+        「写真に追加」を選んで保存してください。<br>
+        <span style="font-size:11px;opacity:.8;">OneDriveで自動同期→PCから取得できます</span>
+      </div>
     </div>
   </div>
 
@@ -580,8 +592,8 @@ function handlePhoto(e,n){
   reader.onload=ev=>{
     compositeBlackboard(ev.target.result, n, composited=>{
       // ファイル名を管理された名前に
-      const zumen=(document.getElementById('in-zumen').value||'').replace(/[\\\/\:\*\?\"\<\>\|]/g,'');
-      const masu=(document.getElementById('in-masu').value||'').replace(/[\\\/\:\*\?\"\<\>\|]/g,'');
+      const zumen=(document.getElementById('in-zumen').value||'').replace(/[^a-zA-Z0-9぀-鿿゠-ヿ一-鿿]/g,'');
+      const masu=(document.getElementById('in-masu').value||'').replace(/[^a-zA-Z0-9぀-鿿゠-ヿ一-鿿]/g,'');
       const label=n===1?'全景':'被害部';
       const filename=`点検_${zumen}_${masu}_${label}.jpg`;
       if(n===1){photo1={dataUrl:composited,filename};}
@@ -727,9 +739,65 @@ async function saveTree(){
   if(editingTreeId){tree.id=editingTreeId;await dbPut('trees',tree);editingTreeId=null;}
   else await dbAdd('trees',tree);
   await clearDraft();
+
+  // 写真をiOS写真アプリ / Androidダウンロードに保存
+  await saveTreePhotos(photo1, photo2);
+
+  const hasPhotos=!!(photo1||photo2);
   const msg=document.getElementById('saveMsg');
-  msg.style.display='block';setTimeout(()=>msg.style.display='none',2000);
+  msg.textContent=hasPhotos?'✓ 保存しました！写真を端末に保存中...':'✓ 保存しました！';
+  msg.style.display='block';setTimeout(()=>{msg.style.display='none';msg.textContent='✓ 保存しました！';},3000);
   clearForm();await updateTreeSelect();
+}
+
+// 保存ボタン押下時に写真を端末に保存
+async function saveTreePhotos(p1, p2){
+  if(!p1&&!p2)return;
+  const photos=[];
+  if(p1&&p1.dataUrl)photos.push(p1);
+  if(p2&&p2.dataUrl)photos.push(p2);
+  if(!photos.length)return;
+
+  const ios=isIOS();
+  const hasShare=typeof navigator.share==='function' && typeof navigator.canShare==='function';
+
+  if(ios && hasShare){
+    // iOS：Web Share APIで写真アプリに保存
+    try{
+      const files=await Promise.all(photos.map(async p=>{
+        const res=await fetch(p.dataUrl);
+        const blob=await res.blob();
+        return new File([blob],p.filename,{type:'image/jpeg'});
+      }));
+      const shareable=files.filter(f=>navigator.canShare({files:[f]}));
+      if(shareable.length>0){
+        // まとめて共有（複数枚対応）
+        if(navigator.canShare({files:shareable})){
+          await navigator.share({files:shareable,title:'樹木点検写真'});
+        } else {
+          // 1枚ずつ
+          for(const f of shareable){
+            await navigator.share({files:[f],title:f.name}).catch(()=>{});
+            await new Promise(r=>setTimeout(r,300));
+          }
+        }
+      }
+    }catch(e){
+      if(e.name!=='AbortError'){
+        // Share API失敗時はダウンロードにフォールバック
+        for(const p of photos){
+          await dlDataUrl(p.dataUrl,p.filename);
+          await new Promise(r=>setTimeout(r,400));
+        }
+      }
+    }
+  } else {
+    // PC・Android：ダウンロードフォルダに保存
+    for(const p of photos){
+      await dlDataUrl(p.dataUrl,p.filename);
+      await new Promise(r=>setTimeout(r,400));
+    }
+  }
 }
 
 function clearForm(){
@@ -1087,6 +1155,56 @@ async function savePhotosToLibrary(){
   } else {
     alert('お使いのブラウザはファイル共有に対応していません。\nPCで写真をダウンロードしてください。');
   }
+}
+
+// iOSからCSVをAirDrop/共有シートで送信
+async function exportCSVandShare(){
+  if(!currentRoute){alert('路線を設定してください');return;}
+  const trees=await dbByIndex('trees','routeId',currentRoute.id);
+  if(!trees.length){alert('データがありません');return;}
+  trees.sort((a,b)=>a.seqNo-b.seqNo);
+
+  const headers=['通し番号','図面番号','桝番号','市名','町名','樹種','幹周り(m)',
+    '建築限界越え車道側','建築限界越え歩道側','道路施設との競合','支柱直し・撤去','太枝枯れ・折れ','根上がり・舗装クラック','①異常数',
+    '葉の状態','先端枝の枯れ','枯死・著しい衰弱',
+    'キノコの有無','開口空洞','樹皮枯死・欠損・腐朽','病虫害（穿孔痕・フラス）','揺れ','不自然な傾斜','②③異常数',
+    '特記事項','概ね良好・異常なし','維持管理の処置が必要','樹木の外観診断が必要','点検日',
+    '写真ファイル1','写真ファイル2'];
+  const rows=[headers];
+  trees.forEach(t=>{
+    const c1=v=>t.checks1.includes(v)?'○':'';
+    const c2=v=>t.checks2.includes(v)?'○':'';
+    const c3=v=>t.checks3.includes(v)?'○':'';
+    rows.push([
+      t.seqNo,t.zumen||'',t.masu||'',t.city||'',t.town||'',t.species||'',t.trunk||'',
+      c1('建築限界越え車道側'),c1('建築限界越え歩道側'),c1('道路施設との競合'),c1('支柱直し・撤去'),c1('太枝枯れ・折れ'),c1('根上がり・舗装クラック'),t.checks1.length,
+      c2('葉の状態'),c2('先端枝の枯れ'),c2('枯死・著しい衰弱'),
+      c3('キノコの有無'),c3('開口空洞'),c3('樹皮枯死・欠損・腐朽'),c3('病虫害（穿孔痕・フラス）'),c3('揺れ'),c3('不自然な傾斜'),t.checks2.length+t.checks3.length,
+      t.note||'',t.result===0?'○':'',t.result===1?'○':'',t.result===2?'○':'',t.date||'',
+      t.photo1?t.photo1.filename:'',t.photo2?t.photo2.filename:''
+    ]);
+  });
+  const bom='﻿';
+  const csv=bom+rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const today=new Date();
+  const ds=`${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}`;
+  const filename=`樹木点検_${currentRoute.name}_${ds}.csv`;
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+
+  if(navigator.share && navigator.canShare){
+    try{
+      const file=new File([blob],filename,{type:'text/csv'});
+      if(navigator.canShare({files:[file]})){
+        await navigator.share({files:[file],title:filename,text:'樹木点検データ'});
+        return;
+      }
+    }catch(e){if(e.name==='AbortError')return;}
+  }
+  // フォールバック：通常ダウンロード
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=filename;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 
 function dlDataUrl(dataUrl,filename){
