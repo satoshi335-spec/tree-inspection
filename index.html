@@ -277,9 +277,9 @@ body{font-family:-apple-system,'Hiragino Sans','Noto Sans JP',sans-serif;backgro
   </div>
 
   <!-- iPhone用ガイド -->
-  <div id="iosGuide" class="hidden">
+  <div id="iosGuide">
     <div style="background:#fff8e1;border:.5px solid #ffc107;border-radius:12px;padding:16px;margin-bottom:12px;">
-      <div style="font-size:14px;font-weight:600;color:#856404;margin-bottom:8px;">📱 iPhoneでの運用フロー</div>
+      <div style="font-size:14px;font-weight:600;color:#856404;margin-bottom:8px;">📱 iPhoneの場合（写真・CSV転送の流れ）</div>
       <div style="font-size:13px;color:#856404;line-height:2.2;">
         ① 木を選択して入力・点検結果を入力<br>
         ② 写真を撮影（小黒板自動合成）<br>
@@ -1078,11 +1078,11 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const isIOS=()=>/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream;
 
 function applyDeviceUI(){
-  const ios=isIOS();
+  // 全デバイスで両方表示（iPhoneでもCSV出力ボタンを表示）
   const iosGuide=document.getElementById('iosGuide');
   const pcExport=document.getElementById('pcExport');
-  if(iosGuide)iosGuide.classList.toggle('hidden',!ios);
-  if(pcExport)pcExport.classList.toggle('hidden',ios);
+  if(iosGuide)iosGuide.classList.remove('hidden');
+  if(pcExport)pcExport.classList.remove('hidden');
 }
 
 function showDlOverlay(msg, sub=''){
