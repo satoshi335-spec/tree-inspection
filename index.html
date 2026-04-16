@@ -939,11 +939,35 @@ async function exportCSV(){
       t.photo2?t.photo2.filename:''
     ]);
   });
+  showDlOverlay('CSV作成中...', `${trees.length}本のデータを変換しています`);
+  await sleep(50);
   const bom='\uFEFF';
   const csv=bom+rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
   const today=new Date();
   const ds=`${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}`;
-  downloadBlob(new Blob([csv],{type:'text/csv;charset=utf-8'}),`樹木点検_${currentRoute.name}_${ds}.csv`);
+  const filename=`樹木点検_${currentRoute.name}_${ds}.csv`;
+  // iOS Safari対応：data URIで開く
+  const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
+  if(isIOS){
+    hideDlOverlay();
+    // iOSはdata URIをwindow.openで開いてユーザーが保存
+    const dataUri='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+    const w=window.open(dataUri,'_blank');
+    if(!w){
+      // ポップアップブロックされた場合はBlob方式
+      const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+      const a=document.createElement('a');a.href=url;a.download=filename;
+      document.body.appendChild(a);a.click();document.body.removeChild(a);
+      setTimeout(()=>URL.revokeObjectURL(url),1000);
+    }
+    alert(`CSVを開きました。\n画面長押し→「名前を付けて保存」でファイルに保存してください。\nファイル名：${filename}`);
+  } else {
+    const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+    const a=document.createElement('a');a.href=url;a.download=filename;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    hideDlOverlay();
+  }
 }
 
 // ── 写真一括ダウンロード ──────────────────────
@@ -953,29 +977,70 @@ async function exportPhotos(){
   trees.sort((a,b)=>a.seqNo-b.seqNo);
   const withPhotos=trees.filter(t=>t.photo1||t.photo2);
   if(!withPhotos.length){alert('写真データがありません');return;}
-  let count=0;
+
+  // 対象写真リストを作成
+  const photoList=[];
   for(const t of withPhotos){
-    if(t.photo1&&t.photo1.dataUrl){
-      await dlDataUrl(t.photo1.dataUrl, t.photo1.filename);
-      count++;await sleep(400);
-    }
-    if(t.photo2&&t.photo2.dataUrl){
-      await dlDataUrl(t.photo2.dataUrl, t.photo2.filename);
-      count++;await sleep(400);
-    }
+    if(t.photo1&&t.photo1.dataUrl)photoList.push({dataUrl:t.photo1.dataUrl,filename:t.photo1.filename,seqNo:t.seqNo});
+    if(t.photo2&&t.photo2.dataUrl)photoList.push({dataUrl:t.photo2.dataUrl,filename:t.photo2.filename,seqNo:t.seqNo});
   }
-  alert(`写真${count}枚のダウンロードが完了しました。\nCSVと同じフォルダに置いてクロードアドインに渡してください。`);
+
+  const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
+
+  if(isIOS){
+    // iOS：1枚ずつ確認しながらダウンロード
+    showDlOverlay('写真を準備中...', `合計${photoList.length}枚`);
+    await sleep(100);
+    hideDlOverlay();
+    alert(`これから写真を${photoList.length}枚、1枚ずつ保存します。\n「ダウンロード」ボタンが出るたびにタップしてください。`);
+    let count=0;
+    for(const p of photoList){
+      showDlOverlay(`写真を保存中...`, `${count+1} / ${photoList.length}枚目：${p.filename}`);
+      await sleep(200);
+      await dlDataUrl(p.dataUrl, p.filename);
+      count++;
+      await sleep(800); // iOSはダウンロード間隔を長めに
+      hideDlOverlay();
+      await sleep(200);
+    }
+    alert(`写真${count}枚の保存が完了しました！\niPhoneの「ファイル」App→「ダウンロード」フォルダに保存されています。`);
+  } else {
+    // PC・Android：自動ダウンロード
+    let count=0;
+    for(const p of photoList){
+      showDlOverlay('写真をダウンロード中...', `${count+1} / ${photoList.length}枚目：${p.filename}`);
+      await sleep(100);
+      await dlDataUrl(p.dataUrl, p.filename);
+      count++;await sleep(500);
+    }
+    hideDlOverlay();
+    alert(`写真${count}枚のダウンロードが完了しました。`);
+  }
 }
 
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
+function showDlOverlay(msg, sub=''){
+  const ov=document.getElementById('dlOverlay');
+  document.getElementById('dlMsg').textContent=msg;
+  document.getElementById('dlSub').textContent=sub;
+  ov.style.display='flex';
+}
+function hideDlOverlay(){
+  document.getElementById('dlOverlay').style.display='none';
+}
+
 function dlDataUrl(dataUrl,filename){
   return new Promise(res=>{
     const a=document.createElement('a');
-    a.href=dataUrl;a.download=filename;
-    document.body.appendChild(a);a.click();
+    a.href=dataUrl;
+    a.download=filename;
+    a.target='_blank'; // iOS Safariのサポート向上
+    a.rel='noopener';
+    document.body.appendChild(a);
+    a.click();
     document.body.removeChild(a);
-    setTimeout(res,100);
+    setTimeout(res,200);
   });
 }
 
@@ -1007,5 +1072,14 @@ async function clearAll(){
 
 init();
 </script>
+<!-- ダウンロード中オーバーレイ -->
+<div id="dlOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;align-items:center;justify-content:center;flex-direction:column;gap:16px;">
+  <div style="background:#fff;border-radius:16px;padding:28px 32px;text-align:center;max-width:280px;">
+    <div id="dlSpinner" style="width:36px;height:36px;border:3px solid #e5e7eb;border-top-color:#1a7a4a;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 14px;"></div>
+    <div id="dlMsg" style="font-size:15px;font-weight:600;color:#111827;margin-bottom:6px;">準備中...</div>
+    <div id="dlSub" style="font-size:12px;color:#6b7280;"></div>
+  </div>
+</div>
+<style>@keyframes spin{to{transform:rotate(360deg);}}</style>
 </body>
 </html>
