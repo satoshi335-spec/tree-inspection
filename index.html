@@ -266,6 +266,8 @@ body{font-family:-apple-system,'Hiragino Sans','Noto Sans JP',sans-serif;backgro
 
 <!-- 出力タブ -->
 <div id="page-export" class="main hidden">
+
+  <!-- 役所データ取り込み -->
   <div class="import-card">
     <h3>📥 役所データの取り込み</h3>
     <p>点検表ExcelをiPhoneのファイルApp（OneDrive・Dropbox可）から選択して取り込みます</p>
@@ -274,18 +276,39 @@ body{font-family:-apple-system,'Hiragino Sans','Noto Sans JP',sans-serif;backgro
     <div id="importResult" style="margin-top:8px;font-size:12px;color:#5b21b6;min-height:18px;"></div>
   </div>
 
-  <div class="export-card">
-    <h3>📊 データ出力</h3>
-    <p>CSVと写真をPCにダウンロードして、クロードアドインでExcelテンプレートに転記します</p>
-    <button class="export-btn" onclick="exportCSV()">① CSVをダウンロード</button>
-    <button class="export-btn" onclick="exportPhotos()" style="background:#e8f5ee;color:var(--green);">② 写真を一括ダウンロード</button>
-    <div style="font-size:11px;color:rgba(255,255,255,.75);margin-top:4px;line-height:1.7;">
-      ダウンロード後、CSVと写真を同じフォルダに置いてクロードアドインに渡してください
+  <!-- iPhone用ガイド -->
+  <div id="iosGuide" class="hidden">
+    <div style="background:#fff8e1;border:.5px solid #ffc107;border-radius:12px;padding:16px;margin-bottom:12px;">
+      <div style="font-size:14px;font-weight:600;color:#856404;margin-bottom:8px;">📱 現場での運用（iPhone）</div>
+      <div style="font-size:13px;color:#856404;line-height:2;">
+        ① 入力・点検結果をここで保存<br>
+        ② 写真は撮影後に自動で写真アプリに保存<br>
+        ③ 1日終わったらOneDriveに同期<br>
+        ④ <strong>CSV出力・Coworkへの転記はPCで行ってください</strong>
+      </div>
+    </div>
+    <div style="background:#e8f5ee;border:.5px solid #4caf78;border-radius:12px;padding:16px;margin-bottom:12px;">
+      <div style="font-size:14px;font-weight:600;color:#1a7a4a;margin-bottom:8px;">📷 写真をiPhone写真アプリに保存</div>
+      <div style="font-size:12px;color:#1a7a4a;margin-bottom:10px;">小黒板合成済みの写真を1枚ずつ写真アプリに保存します</div>
+      <button onclick="savePhotosToLibrary()" style="background:#1a7a4a;color:#fff;border:none;padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;width:100%;">📸 写真を写真アプリに保存</button>
+    </div>
+  </div>
+
+  <!-- PC用出力 -->
+  <div id="pcExport">
+    <div class="export-card">
+      <h3>📊 データ出力（PC推奨）</h3>
+      <p>CSVと写真をダウンロードしてCoworkに渡します</p>
+      <button class="export-btn" onclick="exportCSV()">① CSVをダウンロード</button>
+      <button class="export-btn" onclick="exportPhotos()" style="background:#e8f5ee;color:var(--green);">② 写真を一括ダウンロード</button>
+      <div style="font-size:11px;color:rgba(255,255,255,.75);margin-top:4px;line-height:1.7;">
+        ダウンロード後、CSVと写真をCoworkに渡してExcelに転記してください
+      </div>
     </div>
   </div>
 
   <div class="card">
-    <div class="card-title">クロードアドインへの指示文</div>
+    <div class="card-title">Coworkへの指示文</div>
     <div id="claudePrompt" style="font-size:12px;color:var(--text);background:#f3f4f6;border-radius:8px;padding:10px;line-height:1.8;white-space:pre-wrap;"></div>
     <button class="btn btn-secondary btn-sm" onclick="copyPrompt()" style="width:100%;margin-top:8px;">📋 コピー</button>
   </div>
@@ -481,7 +504,7 @@ function switchTab(name){
     document.getElementById('tab-'+t).classList.toggle('active',t===name);
   });
   if(name==='list')renderList();
-  if(name==='export'){renderExportStats();renderClaudePrompt();}
+  if(name==='export'){renderExportStats();renderClaudePrompt();applyDeviceUI();}
   if(name==='settings')renderRouteList();
 }
 
@@ -946,28 +969,12 @@ async function exportCSV(){
   const today=new Date();
   const ds=`${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}`;
   const filename=`樹木点検_${currentRoute.name}_${ds}.csv`;
-  // iOS Safari対応：data URIで開く
-  const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
-  if(isIOS){
-    hideDlOverlay();
-    // iOSはdata URIをwindow.openで開いてユーザーが保存
-    const dataUri='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
-    const w=window.open(dataUri,'_blank');
-    if(!w){
-      // ポップアップブロックされた場合はBlob方式
-      const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
-      const a=document.createElement('a');a.href=url;a.download=filename;
-      document.body.appendChild(a);a.click();document.body.removeChild(a);
-      setTimeout(()=>URL.revokeObjectURL(url),1000);
-    }
-    alert(`CSVを開きました。\n画面長押し→「名前を付けて保存」でファイルに保存してください。\nファイル名：${filename}`);
-  } else {
-    const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
-    const a=document.createElement('a');a.href=url;a.download=filename;
-    document.body.appendChild(a);a.click();document.body.removeChild(a);
-    setTimeout(()=>URL.revokeObjectURL(url),1000);
-    hideDlOverlay();
-  }
+  const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  const a=document.createElement('a');a.href=url;a.download=filename;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  hideDlOverlay();
+  alert(`CSVをダウンロードしました。\nCoworkに渡してExcelテンプレートに転記してください。`);
 }
 
 // ── 写真一括ダウンロード ──────────────────────
@@ -987,38 +994,28 @@ async function exportPhotos(){
 
   const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
 
-  if(isIOS){
-    // iOS：1枚ずつ確認しながらダウンロード
-    showDlOverlay('写真を準備中...', `合計${photoList.length}枚`);
+  // PC・Android：自動ダウンロード（iOSはsavePhotosToLibraryを使用）
+  let count=0;
+  for(const p of photoList){
+    showDlOverlay('写真をダウンロード中...', `${count+1} / ${photoList.length}枚目：${p.filename}`);
     await sleep(100);
-    hideDlOverlay();
-    alert(`これから写真を${photoList.length}枚、1枚ずつ保存します。\n「ダウンロード」ボタンが出るたびにタップしてください。`);
-    let count=0;
-    for(const p of photoList){
-      showDlOverlay(`写真を保存中...`, `${count+1} / ${photoList.length}枚目：${p.filename}`);
-      await sleep(200);
-      await dlDataUrl(p.dataUrl, p.filename);
-      count++;
-      await sleep(800); // iOSはダウンロード間隔を長めに
-      hideDlOverlay();
-      await sleep(200);
-    }
-    alert(`写真${count}枚の保存が完了しました！\niPhoneの「ファイル」App→「ダウンロード」フォルダに保存されています。`);
-  } else {
-    // PC・Android：自動ダウンロード
-    let count=0;
-    for(const p of photoList){
-      showDlOverlay('写真をダウンロード中...', `${count+1} / ${photoList.length}枚目：${p.filename}`);
-      await sleep(100);
-      await dlDataUrl(p.dataUrl, p.filename);
-      count++;await sleep(500);
-    }
-    hideDlOverlay();
-    alert(`写真${count}枚のダウンロードが完了しました。`);
+    await dlDataUrl(p.dataUrl, p.filename);
+    count++;await sleep(500);
   }
+  hideDlOverlay();
+  alert(`写真${count}枚のダウンロードが完了しました。\nCSVと同じフォルダに置いてCoworkに渡してください。`);
 }
 
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const isIOS=()=>/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream;
+
+function applyDeviceUI(){
+  const ios=isIOS();
+  const iosGuide=document.getElementById('iosGuide');
+  const pcExport=document.getElementById('pcExport');
+  if(iosGuide)iosGuide.classList.toggle('hidden',!ios);
+  if(pcExport)pcExport.classList.toggle('hidden',ios);
+}
 
 function showDlOverlay(msg, sub=''){
   const ov=document.getElementById('dlOverlay');
@@ -1028,6 +1025,68 @@ function showDlOverlay(msg, sub=''){
 }
 function hideDlOverlay(){
   document.getElementById('dlOverlay').style.display='none';
+}
+
+// iOS写真アプリへの保存（撮影直後に1枚ずつ）
+function saveOnePhotoToLibrary(dataUrl, filename){
+  // iOSでは<a>タグのdownloadが写真アプリではなくファイルAppに行く
+  // Web Share APIが使えれば写真アプリに保存可能
+  if(navigator.share && navigator.canShare){
+    fetch(dataUrl)
+      .then(r=>r.blob())
+      .then(blob=>{
+        const file=new File([blob],filename,{type:'image/jpeg'});
+        if(navigator.canShare({files:[file]})){
+          navigator.share({files:[file],title:filename})
+            .catch(()=>{}); // キャンセルは無視
+        }
+      });
+  }
+}
+
+// 写真アプリへの一括保存ボタン用
+async function savePhotosToLibrary(){
+  if(!currentRoute){alert('路線を設定してください');return;}
+  const trees=await dbByIndex('trees','routeId',currentRoute.id);
+  trees.sort((a,b)=>a.seqNo-b.seqNo);
+  const photoList=[];
+  for(const t of trees){
+    if(t.photo1&&t.photo1.dataUrl)photoList.push({dataUrl:t.photo1.dataUrl,filename:t.photo1.filename});
+    if(t.photo2&&t.photo2.dataUrl)photoList.push({dataUrl:t.photo2.dataUrl,filename:t.photo2.filename});
+  }
+  if(!photoList.length){alert('写真データがありません\n\n写真はアプリ内で撮影してください');return;}
+
+  if(navigator.share && navigator.canShare){
+    showDlOverlay('写真を準備中...','しばらくお待ちください');
+    try{
+      const files=await Promise.all(photoList.map(async p=>{
+        const r=await fetch(p.dataUrl);
+        const b=await r.blob();
+        return new File([b],p.filename,{type:'image/jpeg'});
+      }));
+      hideDlOverlay();
+      if(navigator.canShare({files})){
+        await navigator.share({files,title:'樹木点検写真'});
+      } else {
+        // ファイルが多い場合は1枚ずつ
+        hideDlOverlay();
+        alert(`写真を${photoList.length}枚、1枚ずつ共有します。\n写真アプリに保存を選択してください。`);
+        for(const p of photoList){
+          const r=await fetch(p.dataUrl);const b=await r.blob();
+          const f=new File([b],p.filename,{type:'image/jpeg'});
+          if(navigator.canShare({files:[f]})){
+            await navigator.share({files:[f],title:p.filename}).catch(()=>{});
+          }
+          await sleep(500);
+        }
+      }
+    } catch(e){
+      hideDlOverlay();
+      if(e.name!=='AbortError')alert('共有に失敗しました: '+e.message);
+    }
+  } else {
+    alert('お使いのブラウザはファイル共有に対応していません。\nPCで写真をダウンロードしてください。');
+  }
 }
 
 function dlDataUrl(dataUrl,filename){
