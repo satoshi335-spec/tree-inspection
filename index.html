@@ -280,12 +280,9 @@ body{font-family:-apple-system,'Hiragino Sans','Noto Sans JP',sans-serif;backgro
   <div class="export-card">
     <h3>📊 データ出力</h3>
     <p>CSVをダウンロード・共有してCoworkでExcelに転記します</p>
-    <button class="export-btn" onclick="exportCSVandShare()">① CSV出力・共有（iPhone→AirDrop / PC→ダウンロード）</button>
-    <button class="export-btn" onclick="exportPhotos()" style="background:#e8f5ee;color:var(--green);">② 写真を一括ダウンロード（PC・Android用）</button>
-    <div style="font-size:11px;color:rgba(255,255,255,.75);margin-top:4px;line-height:1.8;">
-      📱 iPhone：CSVをAirDropでPCに送信　写真は「この木を保存」時に写真アプリへ<br>
-      💻 PC・Android：CSVと写真をフォルダに保存してCoworkへ
-    </div>
+    <button class="export-btn" onclick="exportCSVandShare()">① CSV出力・共有</button>
+    <button class="export-btn" id="btnBulkPhotos" onclick="exportPhotos()" style="background:#e8f5ee;color:var(--green);">② 写真を一括ダウンロード（PC・Android用）</button>
+    <div id="exportGuide" style="font-size:11px;color:rgba(255,255,255,.75);margin-top:4px;line-height:1.8;"></div>
   </div>
 
   <div class="card">
@@ -1062,7 +1059,15 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const isIOS=()=>/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream;
 
 function applyDeviceUI(){
-  // 全デバイス共通UI（処理なし）
+  const ios = isIOS();
+  const bulkBtn = document.getElementById('btnBulkPhotos');
+  const guide = document.getElementById('exportGuide');
+  if(bulkBtn) bulkBtn.style.display = ios ? 'none' : 'block';
+  if(guide){
+    guide.innerHTML = ios
+      ? '📱 iPhone：① でCSVをAirDrop送信　写真は「この木を保存」時に自動で写真アプリへ保存されます'
+      : '💻 PC・Android：① でCSVをダウンロード　② で写真を一括ダウンロードしてCoworkへ';
+  }
 }
 
 function showDlOverlay(msg, sub=''){
